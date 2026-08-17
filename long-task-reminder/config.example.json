@@ -1,0 +1,11 @@
+{
+  "feishuWebhook": "",
+  "notifyOnCreate": false,
+  "notifyOnComplete": true,
+  "notifyOnBlocked": true,
+  "notifyOnPaused": true,
+  "notifyOnApproval": true,
+  "notifyOnError": true,
+  "dryRun": false,
+  "cooldownMs": 15000
+}

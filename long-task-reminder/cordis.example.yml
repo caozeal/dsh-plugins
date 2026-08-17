@@ -1,0 +1,24 @@
+# cordis.example.yml —— 把 long-task-reminder 挂进 DSH Host 组合的示例
+#
+# 前提：插件源码先提升为 harness 包（@deepseek-ai/dsh-*，见项目根 README），
+# 或直接以「动态插件」方式在会话内挂载（见 long-task-reminder/README.md）。
+#
+# 提升为包后，在 Host 组合（cordis.yml）里加一行即可：
+#
+#   - id: long-task-reminder
+#     name: '@deepseek-ai/dsh-plugin-long-task-reminder'
+#     config:
+#       feishuWebhook: 'https://open.feishu.cn/open-apis/bot/v2/hook/<你的token>'
+#       notifyOnCreate: false
+#       notifyOnComplete: true
+#       notifyOnBlocked: true
+#       notifyOnPaused: true
+#       notifyOnApproval: true
+#       notifyOnError: true
+#       dryRun: false
+#       cooldownMs: 15000
+#
+# 说明：
+#   - 该插件是 Host 侧能力（进程级监听所有会话的生命周期事件），
+#     不属于某个 agent preset，不应放进 isolate realm。
+#   - feishuWebhook 留空 = dry-run（只打日志不发送），适合先验证。

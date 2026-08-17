@@ -1,0 +1,46 @@
+# dsh-plugins — 我们的 dsh 插件项目
+
+DSH（DeepSeek Harness）插件开发项目。每个子目录是一个独立插件，自己带 README、
+配置模板和测试，可按需挂载进 DSH 的 Host 组合或某次会话的动态插件。
+
+## 目录
+
+| 插件 | 目录 | 状态 | 说明 |
+| --- | --- | --- | --- |
+| 长任务结束提醒 | `long-task-reminder/` | ✅ 可用 | 长任务结束 / 需要交互时通过飞书自定义机器人 webhook 推送通知 |
+
+## 快速开始（以 long-task-reminder 为例）
+
+1. 进入插件目录，复制配置模板：
+
+   ```sh
+   cp long-task-reminder/config.example.json long-task-reminder/config.json
+   ```
+
+2. 在飞书群里添加「自定义机器人」，把生成的 webhook URL 填进
+   `long-task-reminder/config.json` 的 `feishuWebhook` 字段。
+
+3. 两种挂载方式任选其一：
+
+   - **动态插件**（当前会话临时生效，改代码即测）：参考各插件 README 中的
+     「动态挂载」一节，把 `src/plugin.js` 的 `apply` 主体内联到
+     `cordis_define` 的 `code.host` 里，然后 `cordis_run`。
+   - **Host 组合**（持久生效、进程级）：把 `cordis.example.yml` 里的行合并进
+     Host 组合的 `cordis.yml`（需要先把插件源码提升为 harness 包，见下方说明）。
+
+4. 未配置 webhook 时插件自动进入 **dry-run**：事件触发后只在日志打印
+   「本应发送的通知」，方便先验证链路再接真实 webhook。
+
+## 插件从「独立目录」提升为「harness 包」的路径
+
+独立目录便于快速迭代；一旦要持久挂在 Host 组合里，标准做法是把它移植进
+deepseek-harness 的 `packages/` workspace 成为 `@deepseek-ai/dsh-*` 包，
+再在组合里加一行（参考 `dsh-lab/ui-schedule-integration.patch` 的做法：
+新增包 + `cordis.patch.yml` 加行 + `package.json`/`tsconfig`/`pnpm-lock` 同步）。
+
+## 约定
+
+- 插件源码用**纯 ESM JavaScript + JSDoc**（零构建、可直接内联进动态插件；
+  提升为 harness 包时再移植成 TypeScript）。
+- 配置统一放各插件目录的 `config.json`（已 gitignore），模板为 `config.example.json`。
+- 每个插件至少带一个 dry-run 自测脚本（`test/`），不依赖真实 webhook。

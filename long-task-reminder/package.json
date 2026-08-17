@@ -1,0 +1,16 @@
+{
+  "name": "dsh-plugin-long-task-reminder",
+  "version": "0.1.0",
+  "description": "DSH 长任务结束提醒插件：任务结束或需要交互时通过飞书自定义机器人 webhook 推送通知",
+  "type": "module",
+  "main": "src/plugin.js",
+  "exports": {
+    ".": "./src/plugin.js",
+    "./messages": "./src/messages.js",
+    "./notifier": "./src/notifier.js"
+  },
+  "scripts": {
+    "test": "node test/dry-run.mjs"
+  },
+  "license": "MIT"
+}
