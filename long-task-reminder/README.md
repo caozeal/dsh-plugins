@@ -33,19 +33,27 @@ DSH 插件：长任务（以 **goal** 为代表的跨轮次长目标）结束、
 
 webhook 留空时插件自动 **dry-run**：事件触发只打日志、不发送，方便先验证链路。
 
-## 2. 挂载方式（二选一）
+## 2. 挂载方式
 
-### A. 动态插件（当前会话临时生效，改代码即测，推荐开发期用）
+### A. Web profile 持久接入（推荐，已配置）
+
+把插件作为本地 `file:` 依赖挂进 Web profile（`~/.dsh/profiles/web`），**随 Web
+启动自动加载、重启不丢**。具体步骤见项目根 README「持久化接入」一节：
+`package.json` 加 `file:` 依赖 → `pnpm install` → `cordis.patch.yml` 加
+`- insert: long-task-reminder` 行 → `dsh_ctl restart` 生效。
+
+配置仍统一读本目录 `config.json`；改配置后重启 Web 生效。
+
+### B. 动态插件（当前会话临时生效，改代码即测，开发期用）
 
 以 Cordis 动态插件方式挂到当前会话。把 `src/plugin.js` 的 `apply` 主体（去掉
 `import`）内联进 `cordis_define` 的 `code.host`，然后 `cordis_run`。插件会从
-本目录 `config.json` 读取配置；未配置 webhook 时进入 dry-run。
+本目录 `config.json` 读取配置。⚠️ 进程重启后失效，需重新挂载。
 
-### B. Host 组合（持久生效、进程级，推荐正式用）
+### C. Host 组合 / harness 包（正式发布用）
 
-需要先把插件源码提升为 harness 包（`@deepseek-ai/dsh-*`）并在 Host 组合加一行，
-参考项目根 README「提升为 harness 包」与 `cordis.example.yml`。提升后可在
-`config` 块直接写 webhook，不再读 `config.json`。
+提升为 `@deepseek-ai/dsh-*` 包并加进 Host 组合，参考 `cordis.example.yml`。
+提升后可在 `config` 块直接写 webhook，不再读 `config.json`。
 
 ## 3. 验证
 

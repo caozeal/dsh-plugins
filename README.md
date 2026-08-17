@@ -31,6 +31,25 @@ DSH（DeepSeek Harness）插件开发项目。每个子目录是一个独立插�
 4. 未配置 webhook 时插件自动进入 **dry-run**：事件触发后只在日志打印
    「本应发送的通知」，方便先验证链路再接真实 webhook。
 
+## 持久化接入（Web profile，推荐，已配置）
+
+动态插件随 DSH 进程重启而失效（进程级、临时）。要让提醒**长期生效**，把插件挂进
+Web profile（`~/.dsh/profiles/web`），已按 `dsh-image-relay` 的本地插件先例配好：
+
+1. `~/.dsh/profiles/web/package.json` 增加本地依赖（直接引用本项目，单一源码/配置源）：
+   `"dsh-plugin-long-task-reminder": "file:/Users/caozeal/projects/dsh-plugins/long-task-reminder"`
+2. `cd ~/.dsh/profiles/web && pnpm install`（已执行，node_modules 已链接）
+3. `~/.dsh/profiles/web/cordis.patch.yml` 增加补丁行（已加）：
+   ```yaml
+   - insert:
+       - id: long-task-reminder
+         name: 'dsh-plugin-long-task-reminder'
+   ```
+4. `dsh_ctl restart` 重启 Web GUI 生效（重启会短暂刷新页面，会话数据保留）。
+
+插件配置仍统一读 `long-task-reminder/config.json`（webhook 与事件开关），改完配置
+同样需要重启 Web 生效。
+
 ## 插件从「独立目录」提升为「harness 包」的路径
 
 独立目录便于快速迭代；一旦要持久挂在 Host 组合里，标准做法是把它移植进
