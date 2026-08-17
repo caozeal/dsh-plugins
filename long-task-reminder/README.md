@@ -25,11 +25,22 @@ DSH 插件：长任务（以 **goal** 为代表的跨轮次长目标）结束、
 1. 在飞书群里 → 设置 → 群机器人 → 添加机器人 → **自定义机器人**。
 2. 复制生成的 **Webhook 地址**（形如
    `https://open.feishu.cn/open-apis/bot/v2/hook/<token>`），可加自定义关键词。
-3. 写入本目录 `config.json`（从 `config.example.json` 复制）：
+3. 打开 Web GUI 的**插件配置**页，在 `long-task-reminder` 一节把 webhook 填入
+   `feishuWebhook`，保存后**实时生效**（无需重启 Web）。
 
-   ```json
-   { "feishuWebhook": "https://open.feishu.cn/open-apis/bot/v2/hook/<你的token>" }
-   ```
+   配置项（settings 命名空间 `long-task-reminder`，持久化到 `settings.yaml`）：
+
+   | 字段 | 默认 | 说明 |
+   | --- | --- | --- |
+   | `feishuWebhook` | 空 | 飞书自定义机器人 webhook；留空 → dry-run 只打日志 |
+   | `notifyOnComplete` | true | goal 完成时通知 |
+   | `notifyOnBlocked` | true | goal 受阻时通知 |
+   | `notifyOnPaused` | true | goal 暂停时通知 |
+   | `notifyOnCreate` | false | 新 goal 开始时通知 |
+   | `notifyOnApproval` | true | 需要授权/审批时通知 |
+   | `notifyOnError` | true | 执行出错时通知 |
+   | `dryRun` | false | 全局 dry-run，只打日志不发送 |
+   | `cooldownMs` | 15000 | 同一类通知的最小间隔（ms） |
 
 webhook 留空时插件自动 **dry-run**：事件触发只打日志、不发送，方便先验证链路。
 
@@ -42,13 +53,14 @@ webhook 留空时插件自动 **dry-run**：事件触发只打日志、不发送
 `package.json` 加 `file:` 依赖 → `pnpm install` → `cordis.patch.yml` 加
 `- insert: long-task-reminder` 行 → `dsh_ctl restart` 生效。
 
-配置仍统一读本目录 `config.json`；改配置后重启 Web 生效。
+配置在 Web GUI 的插件配置页（settings 命名空间 `long-task-reminder`）管理，
+改动**实时生效**；旧 `config.json` 首次启动自动迁移进 Web UI 设置。
 
 ### B. 动态插件（当前会话临时生效，改代码即测，开发期用）
 
 以 Cordis 动态插件方式挂到当前会话。把 `src/plugin.js` 的 `apply` 主体（去掉
-`import`）内联进 `cordis_define` 的 `code.host`，然后 `cordis_run`。插件会从
-本目录 `config.json` 读取配置。⚠️ 进程重启后失效，需重新挂载。
+`import`）内联进 `cordis_define` 的 `code.host`，然后 `cordis_run`。开发期版本
+仍读本目录 `config.json`（未接 settings）。⚠️ 进程重启后失效，需重新挂载。
 
 ### C. Host 组合 / harness 包（正式发布用）
 
@@ -68,7 +80,7 @@ long-task-reminder/
 ├── README.md              # 本文件
 ├── package.json
 ├── config.example.json    # 配置模板
-├── config.json            # 实际配置（gitignore，含 webhook）
+├── config.json            # 旧版配置（gitignore；首次启动自动迁移到 Web UI 设置）
 ├── cordis.example.yml     # Host 组合挂载示例
 ├── src/
 │   ├── plugin.js          # Cordis 插件入口：事件监听 + 通知编排 + 冷却
@@ -84,4 +96,5 @@ long-task-reminder/
 - 渠道抽象预留了 `sendFeishu(ctx, config, message)`，后续加 QQ/Server酱/Bark
   只需新增发送器并按 `config.channel` 分发。
 - 冷却按「通知种类」限流（默认 15s）；如需按会话限流可再细化。
-- 提升为 harness 包时，配置优先走组合 `config` 块，`config.json` 只作开发兜底。
+- 配置以 Web UI 插件配置页（settings）为准；`config.json` 仅作一次性迁移来源。
+- 设置项改动通过 `scope.watch` 实时生效，无需重启。

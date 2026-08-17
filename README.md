@@ -11,14 +11,10 @@ DSH（DeepSeek Harness）插件开发项目。每个子目录是一个独立插�
 
 ## 快速开始（以 long-task-reminder 为例）
 
-1. 进入插件目录，复制配置模板：
-
-   ```sh
-   cp long-task-reminder/config.example.json long-task-reminder/config.json
-   ```
-
-2. 在飞书群里添加「自定义机器人」，把生成的 webhook URL 填进
-   `long-task-reminder/config.json` 的 `feishuWebhook` 字段。
+1. 在飞书群里添加「自定义机器人」，复制生成的 webhook URL。
+2. 打开 Web GUI 的**插件配置**页，在 `long-task-reminder` 一节把 webhook 填入
+   `feishuWebhook` 字段，保存即**实时生效**（无需重启）。
+   （旧版 `config.json` 首次启动会自动迁移进 Web UI 设置。）
 
 3. 两种挂载方式任选其一：
 
@@ -47,8 +43,9 @@ Web profile（`~/.dsh/profiles/web`），已按 `dsh-image-relay` 的本地插�
    ```
 4. `dsh_ctl restart` 重启 Web GUI 生效（重启会短暂刷新页面，会话数据保留）。
 
-插件配置仍统一读 `long-task-reminder/config.json`（webhook 与事件开关），改完配置
-同样需要重启 Web 生效。
+插件配置在 Web GUI 的插件配置页管理（settings 命名空间 `long-task-reminder`），
+持久化到 `settings.yaml`，改动**实时生效**、无需重启。旧 `config.json` 仅作
+一次性迁移来源。
 
 ## 插件从「独立目录」提升为「harness 包」的路径
 
@@ -61,5 +58,6 @@ deepseek-harness 的 `packages/` workspace 成为 `@deepseek-ai/dsh-*` 包，
 
 - 插件源码用**纯 ESM JavaScript + JSDoc**（零构建、可直接内联进动态插件；
   提升为 harness 包时再移植成 TypeScript）。
-- 配置统一放各插件目录的 `config.json`（已 gitignore），模板为 `config.example.json`。
+- 运行期配置走 Web GUI 插件配置页（settings 服务，持久化到 `settings.yaml`）；
+  各插件目录的 `config.json` 仅作旧版/开发兜底。
 - 每个插件至少带一个 dry-run 自测脚本（`test/`），不依赖真实 webhook。
