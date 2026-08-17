@@ -37,12 +37,12 @@ export function goalChangedMessage(change) {
   switch (change.operation) {
     case 'complete':
       return { emoji: '✅', title: '长任务已完成', text: `任务已完成，可以来看结果了。\n${base}` }
-    case 'blocked': {
+    case 'block': {
       const reason = goal.blockedReason
       const detail = truncate(reason && reason.message ? reason.message : '需要你介入处理', 300)
       return { emoji: '⛔', title: '长任务受阻，需要处理', text: `${detail}\n${base}` }
     }
-    case 'paused':
+    case 'pause':
       return { emoji: '⏸️', title: '长任务已暂停', text: `任务已暂停，等待你确认是否继续。\n${base}` }
     case 'create':
       return { emoji: '🚀', title: '长任务已开始', text: `新任务开始执行，我会在任务结束或需要你时提醒。\n${base}` }

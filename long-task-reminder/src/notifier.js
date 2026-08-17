@@ -77,6 +77,7 @@ export async function sendFeishu(ctx, config, message, logger = console) {
       logger.error(`${line}\n    （飞书返回异常：${stdout || stderr}）`)
       return { sent: false, reason: 'feishu-code', detail: stdout || stderr }
     }
+    logger.log(`${line}\n    （飞书已接收）`)
     return { sent: true }
   } catch (error) {
     const detail = error && error.message ? error.message : String(error)
