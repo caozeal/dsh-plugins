@@ -9,6 +9,7 @@ import {
   goalChangedMessage,
   approvalRequestMessage,
   agentErrorMessage,
+  turnEndMessage,
   truncate,
 } from '../src/messages.js'
 import { sendFeishu } from '../src/notifier.js'
@@ -51,6 +52,12 @@ ok('goal paused', () => {
 ok('goal create', () => {
   const m = goalChangedMessage({ operation: 'create', goal: { objective: '重构代码' } })
   assert.equal(m.emoji, '🚀')
+})
+
+ok('普通任务结束（turn end）', () => {
+  const m = turnEndMessage({ id: 'sess-1' })
+  assert.equal(m.title, '任务已完成')
+  assert.match(m.text, /普通任务处理完成/)
 })
 
 ok('edit / resume / clear 不通知', () => {

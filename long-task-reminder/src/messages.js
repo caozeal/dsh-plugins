@@ -71,3 +71,12 @@ export function agentErrorMessage(payload) {
   const where = Number.isInteger(payload && payload.turn) ? `第 ${payload.turn} 轮 / 第 ${payload.step} 步` : ''
   return { emoji: '❌', title: '任务执行出错', text: `${where ? `${where}出错：` : '出错：'}${detail}` }
 }
+
+/**
+ * 普通任务（未建目标）结束 → 通知文案。
+ * @param {{ id?: string }} agent DSH `agent/status` 负载中的 agent。
+ * @returns {{ emoji: string, title: string, text: string }}
+ */
+export function turnEndMessage(agent) {
+  return { emoji: '✅', title: '任务已完成', text: '普通任务处理完成，可以来看结果了。' }
+}

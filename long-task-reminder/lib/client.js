@@ -29,6 +29,8 @@ window.__ModuleLoader__.load({
 			{ key: "notifyOnError", kind: "boolean" },
 			{ key: "dryRun", kind: "boolean" },
 			{ key: "cooldownMs", kind: "number" },
+			{ key: "notifyTurnEnd", kind: "boolean" },
+			{ key: "notifyTurnMinMs", kind: "number" },
 		];
 
 		// Boolean controls with their display copy (product copy is Chinese).
@@ -40,6 +42,7 @@ window.__ModuleLoader__.load({
 			{ key: "notifyOnApproval", label: "需要审批", hint: "产生审批请求、需要交互时提醒" },
 			{ key: "notifyOnError", label: "运行出错", hint: "运行出错时提醒" },
 			{ key: "dryRun", label: "演练模式", hint: "不真正发送飞书消息（用于测试）" },
+			{ key: "notifyTurnEnd", label: "普通任务结束", hint: "未建目标时，普通任务/回合结束提醒" },
 		];
 
 		// Inline styles consume the shared semantic theme tokens (no CSS injection).
@@ -103,6 +106,7 @@ window.__ModuleLoader__.load({
 
 			var webhook = state.fields.feishuWebhook;
 			var cooldown = state.fields.cooldownMs;
+			var turnMin = state.fields.notifyTurnMinMs;
 
 			return React.createElement("li", { style: s.card },
 				React.createElement("button", { type: "button", style: s.header, onClick: function () { setOpen(!isOpen); } },
@@ -133,6 +137,9 @@ window.__ModuleLoader__.load({
 						textFieldChrome("冷却间隔（毫秒）", "同一类通知的最短发送间隔，避免刷屏", textOf(cooldown.value), cooldown.overridden, state.writable, function (value) {
 							// Stage digits only so save always parses a valid integer.
 							props.edit("cooldownMs", value.replace(/[^0-9]/g, ""));
+						}),
+						textFieldChrome("普通任务最短时长（毫秒）", "普通任务运行超过该时长才提醒，避免频繁打扰", textOf(turnMin.value), turnMin.overridden, state.writable, function (value) {
+							props.edit("notifyTurnMinMs", value.replace(/[^0-9]/g, ""));
 						}),
 						React.createElement("div", { style: s.footer },
 							state.saved ? React.createElement("span", { style: s.saved }, "已保存") : null,
