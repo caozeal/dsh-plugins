@@ -19,8 +19,12 @@ import { sendFeishu } from './notifier.js'
 
 export const name = 'long-task-reminder'
 
-/** 全部服务都用 ctx.get 可选读取，不设硬依赖。 */
-export const inject = []
+/**
+ * 硬依赖 fs：启动时要读取配置文件（config.json）。声明为硬依赖后，插件会
+ * 等到 fs 服务就绪才 apply，避免 Web 启动早期 fs 尚未提供导致读不到配置
+ * （其它服务如 subprocess 仅在发送通知时按需 ctx.get，不设硬依赖）。
+ */
+export const inject = ['fs']
 
 /** 各事件开关与 webhook 配置。 */
 const DEFAULT_CONFIG = {
@@ -39,16 +43,21 @@ const DEFAULT_CONFIG = {
 /** 项目内配置文件路径（开发/动态插件阶段读取；组合阶段改用 config 块）。 */
 const CONFIG_PATH = '/Users/caozeal/projects/dsh-plugins/long-task-reminder/config.json'
 
-/** 尽力读取项目 config.json；任何失败都返回空对象（回退默认配置）。 */
+/** 尽力读取项目 config.json；任何失败都返回空对象（回退默认配置）并打日志。 */
 async function readFileConfig(ctx) {
+  const fs = ctx.get('fs')
+  if (!fs) {
+    console.error('[long-task-reminder] fs 服务不可用，无法读取配置文件（webhook 按未配置处理）')
+    return {}
+  }
   try {
-    const fs = ctx.get('fs')
-    if (!fs) return {}
     const target = await fs.resolve(CONFIG_PATH)
     const text = await fs.readText(target)
     const parsed = JSON.parse(text)
     return parsed && typeof parsed === 'object' ? parsed : {}
-  } catch {
+  } catch (error) {
+    const detail = error && error.message ? error.message : String(error)
+    console.error(`[long-task-reminder] 读取配置文件失败（${CONFIG_PATH}）：${detail}`)
     return {}
   }
 }
