@@ -46,12 +46,21 @@ webhook 留空时插件自动 **dry-run**：事件触发只打日志、不发送
 
 ## 2. 挂载方式
 
-### A. Web profile 持久接入（推荐，已配置）
+### A. Web profile 持久接入（推荐，标准 bundle 安装）
 
-把插件作为本地 `file:` 依赖挂进 Web profile（`~/.dsh/profiles/web`），**随 Web
-启动自动加载、重启不丢**。具体步骤见项目根 README「持久化接入」一节：
-`package.json` 加 `file:` 依赖 → `pnpm install` → `cordis.patch.yml` 加
-`- insert: long-task-reminder` 行 → `dsh_ctl restart` 生效。
+插件自带 **bundle patch**（`cordis.patch.yml` + package.json 的 `dsh.bundle`），
+用 `dsh plugin` 一条命令安装即可，**自动**把插件行并入 profile 组合、随 Web 启动
+加载、重启不丢：
+
+```sh
+dsh plugin --profile web add link:/Users/caozeal/projects/dsh-plugins/long-task-reminder
+```
+
+- `link:` 让 pnpm 以**符号链接**安装（代码改动即时生效，无需重新 install）。
+- 安装成功后 `dsh plugin` 自动把它写进 `dsh.profile.bundles`（bundle 层），
+  插件的 `cordis.patch.yml` 在下次 Web 启动时自动插入 `long-task-reminder` 行；
+  无需再手动改 `~/.dsh/profiles/web/cordis.patch.yml`。
+- 完成后 `dsh_ctl restart` 生效。
 
 配置在 Web GUI 的插件配置页（settings 命名空间 `long-task-reminder`）管理，
 改动**实时生效**；旧 `config.json` 首次启动自动迁移进 Web UI 设置。
@@ -78,10 +87,13 @@ npm test   # 跑 dry-run 自测：文案构造 + 发送链路（不碰网络）
 ```
 long-task-reminder/
 ├── README.md              # 本文件
-├── package.json
+├── package.json           # dsh.bundle（组合 patch）+ dsh.client（Web 配置卡片）
+├── cordis.patch.yml       # bundle patch：把插件行并入 profile 组合
 ├── config.example.json    # 配置模板
 ├── config.json            # 旧版配置（gitignore；首次启动自动迁移到 Web UI 设置）
 ├── cordis.example.yml     # Host 组合挂载示例
+├── lib/
+│   └── client.js          # 浏览器 bundle：插件配置页的「长任务提醒」卡片
 ├── src/
 │   ├── plugin.js          # Cordis 插件入口：事件监听 + 通知编排 + 冷却
 │   ├── messages.js        # 事件 → 通知文案（纯函数）

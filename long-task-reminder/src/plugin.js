@@ -83,6 +83,7 @@ export function apply(ctx, compositionConfig) {
   const allow = makeCooldown()
   const send = (kind, message) => {
     if (!message || !allow(kind, config.cooldownMs)) return
+    console.log(`[long-task-reminder] 发送通知 ${kind}：${message.emoji} ${message.title}`)
     // 异步发送，不阻塞事件监听器；失败已由 notifier 记录日志。
     sendFeishu(ctx, config, message).catch(() => {})
   }
@@ -90,23 +91,28 @@ export function apply(ctx, compositionConfig) {
   ctx.on('goal/changed', (payload) => {
     const change = payload && payload.change
     const op = change && change.operation
+    // GoalOperation 取值：create | edit | pause | resume | complete | block | clear
     const flag = {
       create: config.notifyOnCreate,
       complete: config.notifyOnComplete,
-      blocked: config.notifyOnBlocked,
-      paused: config.notifyOnPaused,
+      block: config.notifyOnBlocked,
+      pause: config.notifyOnPaused,
     }[op]
+    console.log(`[long-task-reminder] 收到 goal/changed：op=${op}，flag=${String(flag)}`)
     if (!flag) return
     send(`goal:${op}`, goalChangedMessage(change))
   })
 
   // waterfall：观察审批请求并放行（必须调用 next()）。
   ctx.on('approval/request', (req, next) => {
+    console.log(`[long-task-reminder] 收到 approval/request：${req && req.title || ''}`)
     if (config.notifyOnApproval) send('approval', approvalRequestMessage(req))
     return next()
   })
 
   ctx.on('agent/error', (payload) => {
+    const err = payload && payload.error
+    console.log(`[long-task-reminder] 收到 agent/error：${err && err.message || err || ''}`)
     if (config.notifyOnError) send('error', agentErrorMessage(payload))
   })
 

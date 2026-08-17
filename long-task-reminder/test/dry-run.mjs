@@ -37,13 +37,13 @@ ok('goal complete', () => {
 })
 
 ok('goal blocked 带原因', () => {
-  const m = goalChangedMessage({ operation: 'blocked', goal: { objective: '部署服务', blockedReason: { message: '磁盘已满' } } })
+  const m = goalChangedMessage({ operation: 'block', goal: { objective: '部署服务', blockedReason: { message: '磁盘已满' } } })
   assert.equal(m.title, '长任务受阻，需要处理')
   assert.match(m.text, /磁盘已满/)
 })
 
 ok('goal paused', () => {
-  const m = goalChangedMessage({ operation: 'paused', goal: { objective: '训练模型' } })
+  const m = goalChangedMessage({ operation: 'pause', goal: { objective: '训练模型' } })
   assert.equal(m.emoji, '⏸️')
   assert.match(m.text, /训练模型/)
 })

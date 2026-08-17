@@ -7,7 +7,22 @@
   "exports": {
     ".": "./src/plugin.js",
     "./messages": "./src/messages.js",
-    "./notifier": "./src/notifier.js"
+    "./notifier": "./src/notifier.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-slots",
+        "@deepseek-ai/dsh-client-ui-settings",
+        "@deepseek-ai/dsh-client-runtime"
+      ]
+    }
   },
   "scripts": {
     "test": "node test/dry-run.mjs"
