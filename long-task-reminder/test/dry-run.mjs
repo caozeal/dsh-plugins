@@ -10,6 +10,7 @@ import {
   approvalRequestMessage,
   agentErrorMessage,
   turnEndMessage,
+  stoppedMessage,
   agentContext,
   contextText,
   truncate,
@@ -99,6 +100,20 @@ ok('goal 消息带项目名 + 进度总结', () => {
   const m = goalChangedMessage({ operation: 'complete', goal: { objective: '部署服务' } }, agent)
   assert.match(m.text, /项目：dsh-plugins/)
   assert.match(m.text, /进度：完成部署/)
+})
+
+ok('stoppedMessage（手动停止）带项目名 + 进度', () => {
+  const session = {
+    id: 'sess-stop-1',
+    header: { cwd: '/Users/caozeal/projects/ai-app' },
+    deriveMessages() {
+      return [{ role: 'assistant', content: [{ type: 'text', text: '已完成到一半' }] }]
+    },
+  }
+  const m = stoppedMessage(session)
+  assert.equal(m.title, '任务已停止')
+  assert.match(m.text, /项目：ai-app/)
+  assert.match(m.text, /进度：已完成到一半/)
 })
 
 ok('edit / resume / clear 不通知', () => {

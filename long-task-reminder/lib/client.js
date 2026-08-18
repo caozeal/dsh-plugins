@@ -31,6 +31,7 @@ window.__ModuleLoader__.load({
 			{ key: "cooldownMs", kind: "number" },
 			{ key: "notifyTurnEnd", kind: "boolean" },
 			{ key: "notifyTurnMinMs", kind: "number" },
+			{ key: "notifyOnStopped", kind: "boolean" },
 		];
 
 		// Boolean controls with their display copy (product copy is Chinese).
@@ -43,6 +44,7 @@ window.__ModuleLoader__.load({
 			{ key: "notifyOnError", label: "运行出错", hint: "运行出错时提醒" },
 			{ key: "dryRun", label: "演练模式", hint: "不真正发送飞书消息（用于测试）" },
 			{ key: "notifyTurnEnd", label: "普通任务结束", hint: "未建目标时，普通任务/回合结束提醒" },
+			{ key: "notifyOnStopped", label: "手动停止", hint: "手动停止任务时提醒" },
 		];
 
 		// Inline styles consume the shared semantic theme tokens (no CSS injection).
