@@ -22,17 +22,68 @@ export function formatTime(epochMs) {
 }
 
 /**
+ * 从 agent 提取通知上下文：项目名（会话工作目录 basename）与最近一条助手消息文本。
+ * 会话信息缺失或读取失败时静默降级为空串，不阻断通知。
+ * @param {{ session?: { header?: { cwd?: string }, deriveMessages?: () => Array<{ role?: string, content?: Array<{ type?: string, text?: string }> }> } }} agent
+ *   DSH 事件负载中的 agent。
+ * @returns {{ project: string, progress: string }} 只读字符串，不含任何 Host 对象引用。
+ */
+export function agentContext(agent) {
+  let project = ''
+  let progress = ''
+  if (!agent) return { project, progress }
+  try {
+    const session = agent.session
+    const cwd = session && session.header && session.header.cwd
+    const name = cwd ? String(cwd).replace(/\\/g, '/').split('/').filter(Boolean).pop() : ''
+    if (name) project = name
+    const messages = session && typeof session.deriveMessages === 'function' ? session.deriveMessages() : []
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const msg = messages[i]
+      if (msg && msg.role === 'assistant') {
+        const text = (msg.content || [])
+          .filter((block) => block && block.type === 'text')
+          .map((block) => block.text)
+          .join('\n')
+        if (text) {
+          progress = truncate(text, 200)
+          break
+        }
+      }
+    }
+  } catch {
+    // 会话信息不可用时静默降级（不阻断通知）。
+  }
+  return { project, progress }
+}
+
+/**
+ * 把项目名 + 进度总结拼成通知文本的尾部（多行）；两者都为空时返回空串。
+ * @param {unknown} agent DSH 事件负载中的 agent。
+ * @returns {string} 以换行开头，或空串。
+ */
+export function contextText(agent) {
+  const { project, progress } = agentContext(agent)
+  const lines = []
+  if (project) lines.push(`项目：${project}`)
+  if (progress) lines.push(`进度：${progress}`)
+  return lines.length ? `\n${lines.join('\n')}` : ''
+}
+
+/**
  * 目标变更 → 通知文案。
  * @param {{ operation?: string, goal?: { objective?: string, blockedReason?: { message?: string }, updatedAt?: number } }} change
  *   DSH `goal/changed` 事件的 `change` 字段。
+ * @param {unknown} [agent] 事件负载中的 agent，用于补充项目名与进度总结。
  * @returns {{ emoji: string, title: string, text: string } | null} 无需通知时返回 null。
  */
-export function goalChangedMessage(change) {
+export function goalChangedMessage(change, agent) {
   if (!change || typeof change !== 'object') return null
   const goal = change.goal || {}
   const objective = truncate(goal.objective)
   const when = formatTime(goal.updatedAt)
-  const base = `目标：${objective}${when ? `（${when}）` : ''}`
+  const context = contextText(agent)
+  const base = `目标：${objective}${when ? `（${when}）` : ''}${context}`
 
   switch (change.operation) {
     case 'complete':
@@ -69,14 +120,15 @@ export function agentErrorMessage(payload) {
   const err = payload && payload.error
   const detail = truncate(err && typeof err.message === 'string' ? err.message : String(err ?? '未知错误'), 300)
   const where = Number.isInteger(payload && payload.turn) ? `第 ${payload.turn} 轮 / 第 ${payload.step} 步` : ''
-  return { emoji: '❌', title: '任务执行出错', text: `${where ? `${where}出错：` : '出错：'}${detail}` }
+  const context = contextText(payload && payload.agent)
+  return { emoji: '❌', title: '任务执行出错', text: `${where ? `${where}出错：` : '出错：'}${detail}${context}` }
 }
 
 /**
  * 普通任务（未建目标）结束 → 通知文案。
- * @param {{ id?: string }} agent DSH `agent/status` 负载中的 agent。
+ * @param {{ session?: object }} agent DSH `agent/status` 负载中的 agent。
  * @returns {{ emoji: string, title: string, text: string }}
  */
 export function turnEndMessage(agent) {
-  return { emoji: '✅', title: '任务已完成', text: '普通任务处理完成，可以来看结果了。' }
+  return { emoji: '✅', title: '任务已完成', text: `普通任务处理完成，可以来看结果了。${contextText(agent)}` }
 }

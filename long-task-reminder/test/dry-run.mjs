@@ -10,6 +10,8 @@ import {
   approvalRequestMessage,
   agentErrorMessage,
   turnEndMessage,
+  agentContext,
+  contextText,
   truncate,
 } from '../src/messages.js'
 import { sendFeishu } from '../src/notifier.js'
@@ -58,6 +60,45 @@ ok('普通任务结束（turn end）', () => {
   const m = turnEndMessage({ id: 'sess-1' })
   assert.equal(m.title, '任务已完成')
   assert.match(m.text, /普通任务处理完成/)
+})
+
+ok('agentContext 提取项目名 + 最近助手消息进度', () => {
+  const agent = {
+    session: {
+      header: { cwd: '/Users/caozeal/projects/dsh-plugins/long-task-reminder' },
+      deriveMessages() {
+        return [
+          { role: 'user', content: [{ type: 'text', text: '帮我干活' }] },
+          { role: 'assistant', content: [{ type: 'text', text: '已修复受阻/暂停通知并提交' }, { type: 'reasoning', text: '思考中' }] },
+        ]
+      },
+    },
+  }
+  const ctx = agentContext(agent)
+  assert.equal(ctx.project, 'long-task-reminder')
+  assert.match(ctx.progress, /已修复受阻/)
+  // 只取 text 块，跳过 reasoning。
+  assert.ok(!ctx.progress.includes('思考中'))
+})
+
+ok('agentContext 无会话信息时静默降级为空', () => {
+  assert.deepEqual(agentContext(undefined), { project: '', progress: '' })
+  assert.deepEqual(agentContext({}), { project: '', progress: '' })
+  assert.equal(contextText({}), '')
+})
+
+ok('goal 消息带项目名 + 进度总结', () => {
+  const agent = {
+    session: {
+      header: { cwd: '/Users/caozeal/projects/dsh-plugins' },
+      deriveMessages() {
+        return [{ role: 'assistant', content: [{ type: 'text', text: '完成部署' }] }]
+      },
+    },
+  }
+  const m = goalChangedMessage({ operation: 'complete', goal: { objective: '部署服务' } }, agent)
+  assert.match(m.text, /项目：dsh-plugins/)
+  assert.match(m.text, /进度：完成部署/)
 })
 
 ok('edit / resume / clear 不通知', () => {
