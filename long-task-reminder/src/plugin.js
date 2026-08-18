@@ -38,8 +38,8 @@ export const Config = z.object({
   notifyTurnEnd: z.boolean().default(true),
   /** 普通任务运行达到该时长（ms）才视为「任务结束」并提醒，避免快速问答刷屏。 */
   notifyTurnMinMs: z.number().default(60000),
-  /** 手动停止任务时是否提醒。 */
-  notifyOnStopped: z.boolean().default(true),
+  /** 手动停止任务时是否额外发「已停止」通知（默认关闭：停止即静默，不发提醒）。 */
+  notifyOnStopped: z.boolean().default(false),
 })
 
 /** 旧版配置文件路径（仅用于一次性迁移到 settings）。 */
@@ -156,17 +156,17 @@ export function apply(ctx, compositionConfig) {
   })
 
   // 手动停止（用户取消）：turn/end 会话事件，reason = aborted/user。
+  // 始终抑制紧随其后的「已完成」通知（停止 ≠ 完成）；是否额外发「已停止」看开关。
   ctx.on('session/event', (session, event) => {
     if (!event || event.type !== 'turn/end') return
     const reason = event.data && event.data.reason
     if (!reason || reason.kind !== 'aborted') return
     const cause = reason.reason
     if (!cause || cause.kind !== 'user') return
-    if (!config.notifyOnStopped) return
     const sessionId = String(session.id)
     recentlyStopped.add(sessionId)
     console.log(`[long-task-reminder] 收到 turn/end：aborted/user（手动停止）${sessionId}`)
-    send('stop', stoppedMessage(session))
+    if (config.notifyOnStopped) send('stop', stoppedMessage(session))
   })
 
   // Web UI 里改配置 → 实时生效，无需重启。
