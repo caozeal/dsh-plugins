@@ -109,7 +109,7 @@ export function apply(ctx, compositionConfig) {
     console.log(`[long-task-reminder] 收到 goal/changed：op=${op}，flag=${String(flag)}`)
     if (!flag) return
     if (payload && payload.agent) recentGoalNotified.add(payload.agent)
-    send(`goal:${op}`, goalChangedMessage(change))
+    send(`goal:${op}`, goalChangedMessage(change, payload && payload.agent))
   })
 
   // waterfall：观察审批请求并放行（必须调用 next()）。
