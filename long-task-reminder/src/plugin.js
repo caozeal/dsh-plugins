@@ -11,7 +11,7 @@
  * 首次启动会把旧 config.json 里已有的 webhook 一次性并入 settings，避免既有配置丢失。
  */
 import z from '@deepseek-ai/schemastery'
-import { goalChangedMessage, approvalRequestMessage, agentErrorMessage, turnEndMessage } from './messages.js'
+import { goalChangedMessage, approvalRequestMessage, agentErrorMessage, turnEndMessage, stoppedMessage } from './messages.js'
 import { sendFeishu } from './notifier.js'
 
 export const name = 'long-task-reminder'
@@ -38,6 +38,8 @@ export const Config = z.object({
   notifyTurnEnd: z.boolean().default(true),
   /** 普通任务运行达到该时长（ms）才视为「任务结束」并提醒，避免快速问答刷屏。 */
   notifyTurnMinMs: z.number().default(60000),
+  /** 手动停止任务时是否提醒。 */
+  notifyOnStopped: z.boolean().default(true),
 })
 
 /** 旧版配置文件路径（仅用于一次性迁移到 settings）。 */
@@ -87,6 +89,8 @@ export function apply(ctx, compositionConfig) {
   const allow = makeCooldown()
   // 刚因目标完成/受阻/暂停发过通知的 agent，紧随其后的 turn-end 不再重复提醒。
   const recentGoalNotified = new WeakSet()
+  // 刚发过「手动停止」通知的会话 id，紧随其后的 turn-end 不再发「已完成」。
+  const recentlyStopped = new Set()
   // agent 进入 running 的时刻（WeakMap，随 agent 释放自动回收）。
   const runningStart = new WeakMap()
   const send = (kind, message) => {
@@ -135,6 +139,11 @@ export function apply(ctx, compositionConfig) {
     const start = runningStart.get(agent)
     runningStart.delete(agent)
     if (start === undefined) return
+    if (recentlyStopped.has(String(agent.id))) {
+      // 刚发过「手动停止」通知，不再发「已完成」。
+      recentlyStopped.delete(String(agent.id))
+      return
+    }
     if (recentGoalNotified.has(agent)) {
       // 刚发过目标通知（完成/受阻/暂停），紧随其后的 idle 不重复提醒。
       recentGoalNotified.delete(agent)
@@ -144,6 +153,20 @@ export function apply(ctx, compositionConfig) {
     const ranMs = Date.now() - start
     console.log(`[long-task-reminder] agent 转空闲：运行 ${ranMs}ms（阈值 ${config.notifyTurnMinMs}ms）`)
     if (ranMs >= config.notifyTurnMinMs) send('turn', turnEndMessage(agent))
+  })
+
+  // 手动停止（用户取消）：turn/end 会话事件，reason = aborted/user。
+  ctx.on('session/event', (session, event) => {
+    if (!event || event.type !== 'turn/end') return
+    const reason = event.data && event.data.reason
+    if (!reason || reason.kind !== 'aborted') return
+    const cause = reason.reason
+    if (!cause || cause.kind !== 'user') return
+    if (!config.notifyOnStopped) return
+    const sessionId = String(session.id)
+    recentlyStopped.add(sessionId)
+    console.log(`[long-task-reminder] 收到 turn/end：aborted/user（手动停止）${sessionId}`)
+    send('stop', stoppedMessage(session))
   })
 
   // Web UI 里改配置 → 实时生效，无需重启。

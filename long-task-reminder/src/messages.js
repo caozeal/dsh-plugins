@@ -22,18 +22,18 @@ export function formatTime(epochMs) {
 }
 
 /**
- * 从 agent 提取通知上下文：项目名（会话工作目录 basename）与最近一条助手消息文本。
+ * 从 agent 或 session 提取通知上下文：项目名（会话工作目录 basename）与最近一条助手消息文本。
  * 会话信息缺失或读取失败时静默降级为空串，不阻断通知。
- * @param {{ session?: { header?: { cwd?: string }, deriveMessages?: () => Array<{ role?: string, content?: Array<{ type?: string, text?: string }> }> } }} agent
- *   DSH 事件负载中的 agent。
+ * @param {{ session?: { header?: { cwd?: string }, deriveMessages?: () => Array<{ role?: string, content?: Array<{ type?: string, text?: string }> }> }, header?: { cwd?: string }, deriveMessages?: () => Array<{ role?: string, content?: Array<{ type?: string, text?: string }> }> } | undefined} input
+ *   DSH 事件负载中的 agent，或直接一个 session。
  * @returns {{ project: string, progress: string }} 只读字符串，不含任何 Host 对象引用。
  */
-export function agentContext(agent) {
+export function agentContext(input) {
   let project = ''
   let progress = ''
-  if (!agent) return { project, progress }
+  if (!input) return { project, progress }
   try {
-    const session = agent.session
+    const session = input && input.session ? input.session : input
     const cwd = session && session.header && session.header.cwd
     const name = cwd ? String(cwd).replace(/\\/g, '/').split('/').filter(Boolean).pop() : ''
     if (name) project = name
@@ -59,11 +59,11 @@ export function agentContext(agent) {
 
 /**
  * 把项目名 + 进度总结拼成通知文本的尾部（多行）；两者都为空时返回空串。
- * @param {unknown} agent DSH 事件负载中的 agent。
+ * @param {unknown} input DSH 事件负载中的 agent，或直接一个 session。
  * @returns {string} 以换行开头，或空串。
  */
-export function contextText(agent) {
-  const { project, progress } = agentContext(agent)
+export function contextText(input) {
+  const { project, progress } = agentContext(input)
   const lines = []
   if (project) lines.push(`项目：${project}`)
   if (progress) lines.push(`进度：${progress}`)
@@ -131,4 +131,14 @@ export function agentErrorMessage(payload) {
  */
 export function turnEndMessage(agent) {
   return { emoji: '✅', title: '任务已完成', text: `普通任务处理完成，可以来看结果了。${contextText(agent)}` }
+}
+
+/**
+ * 手动停止 → 通知文案。
+ * @param {{ header?: { cwd?: string }, deriveMessages?: () => Array<{ role?: string, content?: Array<{ type?: string, text?: string }> }> }} session
+ *   DSH `session/event` 中 turn/end(aborted/user) 所属的 session。
+ * @returns {{ emoji: string, title: string, text: string }}
+ */
+export function stoppedMessage(session) {
+  return { emoji: '⏹️', title: '任务已停止', text: `任务被你手动停止。${contextText(session)}` }
 }

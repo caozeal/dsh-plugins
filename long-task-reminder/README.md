@@ -41,6 +41,7 @@ DSH 插件：长任务（以 **goal** 为代表的跨轮次长目标）结束、
    | `notifyOnError` | true | 执行出错时通知 |
    | `notifyTurnEnd` | true | 未建目标时，普通任务/回合结束是否提醒 |
    | `notifyTurnMinMs` | 60000 | 普通任务运行达到该时长（ms）才提醒，避免快速问答刷屏 |
+   | `notifyOnStopped` | true | 手动停止任务时提醒 |
    | `dryRun` | false | 全局 dry-run，只打日志不发送 |
    | `cooldownMs` | 15000 | 同一类通知的最小间隔（ms） |
 
