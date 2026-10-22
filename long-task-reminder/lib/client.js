@@ -279,8 +279,7 @@ window.__ModuleLoader__.load({
 			ctx.slots.inject("settings.plugin.item", function* () {
 				yield ctx.slots.register({
 					name: "settings.plugin.item",
-					id: "long-task-reminder",
-					order: 30,
+					key: NS,
 					inject: function () { return card.inject(); },
 				}, LongTaskReminderCard);
 			});
