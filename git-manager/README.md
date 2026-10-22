@@ -115,7 +115,8 @@ op 一览：`snapshot` `graph` `diff` `stage` `unstage` `switchBranch` `deleteBr
 
 - **Host 只做数据**：所有 git 操作在 Host 半区用 `ctx.subprocess` 执行，
   参数校验（绝对路径、ref/hash 白名单、`--` 分隔）在 `src/operations.js`。
-- **Client 只做展示**：单文件 classic script，向 `ctx.sidebarRightTabs` 注册
+- **Client 只做展示**：单文件 classic script + 组件内 `<style>`（class 前缀 `gm-`，
+  卸载即移除；仅用主题 token，窄列容器查询收按钮为图标），向 `ctx.sidebarRightTabs` 注册
   tab 类型、向 keyed `sidebar.right.pane.tab` 注册 body、向
   `conversation.session.header.utilities` 注册入口按钮；只用 `--dsw-alias-*`
   主题 token，文案走 Client locale 服务（zh/en 104 个 key）。

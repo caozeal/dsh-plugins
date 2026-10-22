@@ -263,7 +263,7 @@ window.__ModuleLoader__.load({
       .gm-scroll::-webkit-scrollbar { width:8px; height:8px; }
       .gm-scroll::-webkit-scrollbar-thumb { background:var(--dsw-alias-border-l1); border-radius:8px; }
       .gm-scroll::-webkit-scrollbar-track { background:transparent; }
-      .gm-content-inner { width:100%; max-width:980px; margin:0 auto; }
+      .gm-content-inner { width:100%; }
       .gm-row { display:flex; align-items:center; gap:6px; min-width:0; }
       .gm-spacer { flex:1 1 auto; min-width:0; }
 
@@ -487,6 +487,7 @@ window.__ModuleLoader__.load({
         type: 'button',
         className: className,
         title: props.title || props.label || undefined,
+        'aria-label': props.title || props.label || undefined,
         disabled: !!props.disabled,
         onClick: props.disabled ? undefined : props.onClick,
         onKeyDown: props.onKeyDown,
@@ -1117,7 +1118,7 @@ window.__ModuleLoader__.load({
         repo.detached ? h('option', { value: '' }, tr('header.detached')) : null,
         h('optgroup', { label: tr('branch.local') }, locals.map(function (branch) {
           return h('option', { key: 'l:' + branch.name, value: branch.name },
-            branch.name + (branch.current ? '  ✓' : '') + (branch.ahead ? '  ↑' + branch.ahead : '') + (branch.behind ? '  ↓' + branch.behind : ''))
+            branch.name + (branch.ahead ? '  ↑' + branch.ahead : '') + (branch.behind ? '  ↓' + branch.behind : ''))
         })),
         remotes.length > 0
           ? h('optgroup', { label: tr('branch.remote') }, remotes.map(function (branch) {
