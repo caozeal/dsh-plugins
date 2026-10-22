@@ -1,7 +1,0 @@
-# dsh-plugin-long-task-reminder bundle patch: compose the plugin into any
-# profile that installs this package. The row's runtime config lives in the
-# Web UI settings (namespace `long-task-reminder`, persisted to settings.yaml),
-# so the row carries no static config here.
-- insert:
-    - id: long-task-reminder
-      name: 'dsh-plugin-long-task-reminder'
