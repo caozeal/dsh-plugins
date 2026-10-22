@@ -1,0 +1,40 @@
+✔ looksLikeSubject 接受规范的提交信息 (1.540334ms)
+✔ looksLikeSubject 拒绝截断/半句话/缺前缀的输出 (0.352042ms)
+✔ sanitizeSubject 去掉代码块、引号与多余空白 (0.372167ms)
+✔ 模型输出可用时直接使用 (0.816208ms)
+✔ 模型输出被 reasoning token 截断时走确定性降级 (0.277417ms)
+✔ 没有 llm 或没有默认模型时直接降级 (0.1115ms)
+✔ 模型流报错转成 ai-unavailable 的 GitError (0.293667ms)
+✔ 最近提交为中文时降级文案也用中文 (0.124292ms)
+✔ 真实仓库：面板所需的核心 op 全部可用 (608.835ms)
+✔ snapshot：非仓库目录返回 isRepo=false 而不是报错 (1.074875ms)
+✔ snapshot：汇总仓库、分支、变更与 stash (1.097375ms)
+✔ snapshot：cwd 非绝对路径直接拒绝 (0.299417ms)
+✔ graph：解析 git log --graph 输出 (0.7645ms)
+✔ diff worktree：返回 hunk 与增删统计，路径放在 -- 之后 (0.422291ms)
+✔ diff untracked：必须以 path 调用 --no-index，且退出码 1 不算失败 (0.270625ms)
+✔ diff commit：hash 非法时拒绝（防选项注入） (0.157917ms)
+✔ stage / unstage：all 与 paths 两种形态 (1.326542ms)
+✔ switchBranch：本地分支直接 checkout，远程分支建跟踪分支 (0.645917ms)
+✔ switchBranch：create 走 checkout -b (0.17875ms)
+✔ commit：空信息拒绝，成功后返回 hash 与 subject (0.197ms)
+✔ push：无 upstream 时使用 -u origin <branch> (0.126459ms)
+✔ aiCommit：没有 llm 时降级成确定性文案 (0.324375ms)
+✔ 超时：exec 卡住时按 timeout 报错，code=timeout (31.971167ms)
+✔ 未知 op / 非对象参数报 invalid-params (0.341625ms)
+✔ cleanGitEnv 去掉损坏的 GIT_CONFIG_* 并固定非交互环境 (0.755708ms)
+✔ parsePorcelain 解析分支头、重命名与四类变更 (1.112958ms)
+✔ parseBranchHeader 处理 detached / 无提交 / 无 upstream (0.145125ms)
+✔ parseBranches 解析本地/远程分支与跟踪状态 (0.173959ms)
+✔ parseGraph 分离 graph 前缀、hash 与装饰 (0.192459ms)
+✔ parseRemotes / parseStashes (0.277208ms)
+✔ parseUnifiedDiff 逐行解析 hunk 并统计增删 (0.208417ms)
+✔ GitError 保留 code 与 stderr (0.071833ms)
+ℹ tests 32
+ℹ suites 0
+ℹ pass 32
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 715.936041
