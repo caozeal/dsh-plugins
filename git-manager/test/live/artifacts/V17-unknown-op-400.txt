@@ -1,0 +1,4 @@
+# 未知 op → HTTP 400（复验 2026-10-22 17:22:05 CST）
+$ curl -X POST /api/git-manager -d '{"op":"nonsense"}'
+{"ok":false,"error":{"code":"invalid-params","message":"未知操作：nonsense"}}
+HTTP 400 content-type=application/json; charset=utf-8
