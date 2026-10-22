@@ -1,10 +1,8 @@
 # 依赖与构建产物
 node_modules/
 dist/
-lib/
-# git-manager 的 client bundle 是手写源码（无构建步骤），必须入库
-!git-manager/lib/
-!git-manager/lib/client.js
+
+# git-manager 的 client bundle 是手写源码（无构建步骤），lib/ 需要入库，故不忽略 lib/
 
 # 本地配置（含 webhook 等敏感信息）
 **/config.json
