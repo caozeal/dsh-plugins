@@ -315,9 +315,11 @@ Host 端流程：
 ```
 
 窄列（约 360–560px，可全屏）适配：单列、不并排；顶栏按钮允许换行；
-样式全部走组件内 `<style>` 元素（class 前缀 `gm-`，卸载即移除），只用
-`--dsw-alias-*` token；窄列用容器查询（`@container gm (max-width:430px)`）把顶栏
-按钮收成纯图标；宽屏（全屏）内容 `max-width:980px` 居中；
+样式全部走组件内 `<style>` 元素（class 前缀 `gm-`，卸载即移除），主题色只从
+`--dsw-alias-*` token 取；品牌视觉固定为 DeepSeek 蓝（`#4d6bfe` / `#2f49d6` /
+`#43c9ff`）——胶囊 tab、渐变主按钮、状态药丸、diff/commit 卡片、胖鲸鱼空态
+（bob + 气泡动画）；窄列用容器查询（`@container gm (max-width:430px)`）把顶栏
+按钮收成纯图标；宽屏（全屏）内容占满右栏；
 全部暂存/取消按钮放内容顶部；提交区固定在底部始终可见。
 
 - 空态：无会话 → 提示先选择会话；`repo.isRepo === false` → 提示当前目录不是 Git 仓库；

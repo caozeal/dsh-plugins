@@ -117,10 +117,12 @@ op 一览：`snapshot` `graph` `diff` `stage` `unstage` `switchBranch` `deleteBr
 - **Host 只做数据**：所有 git 操作在 Host 半区用 `ctx.subprocess` 执行，
   参数校验（绝对路径、ref/hash 白名单、`--` 分隔）在 `src/operations.js`。
 - **Client 只做展示**：单文件 classic script + 组件内 `<style>`（class 前缀 `gm-`，
-  卸载即移除；仅用主题 token，窄列容器查询收按钮为图标），向 `ctx.sidebarRightTabs` 注册
+  卸载即移除；窄列容器查询收按钮为图标），向 `ctx.sidebarRightTabs` 注册
   tab 类型、向 keyed `sidebar.right.pane.tab` 注册 body、向
-  `conversation.session.header.utilities` 注册入口按钮；只用 `--dsw-alias-*`
-  主题 token，文案走 Client locale 服务（zh/en 104 个 key）。
+  `conversation.session.header.utilities` 注册入口按钮；文案走 Client locale 服务
+  （zh/en 108 个 key）。视觉以 DeepSeek 蓝为基调 + 胖鲸鱼吉祥物：圆角胶囊 tab、
+  渐变主按钮、鲸鱼空态（bob 动画 + 气泡）、状态药丸、diff/commit 卡片，全部是
+  组件内 CSS + 主题 token（见 `lib/client.js` 里的 `PANEL_CSS`）。
 - **失败可见**：git 非 0 退出把 stderr 摘要带回 UI，在底部状态条展示；
   只读操作（snapshot/graph/diff）不会阻断面板。
 - **AI 是可选能力**：缺少 `llm` / `agentDefaultModel` 时 `aiCommit` 自动降级，
