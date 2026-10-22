@@ -8,6 +8,7 @@ DSH（DeepSeek Harness）插件开发项目。每个子目录是一个独立插�
 | 插件 | 目录 | 状态 | 说明 |
 | --- | --- | --- | --- |
 | 长任务结束提醒 | `long-task-reminder/` | ✅ 可用 | 长任务结束 / 需要交互时通过飞书自定义机器人 webhook 推送通知 |
+| Git 管理 | `git-manager/` | ✅ 可用 | Web **右侧边栏** Git 面板：分支切换、暂存/提交/推送/拉取、AI 提交信息、提交图与 diff（32 单测 + 27 项 RPC smoke + 真机全链路验证） |
 
 ## 快速开始（以 long-task-reminder 为例）
 

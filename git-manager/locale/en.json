@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Git Manager",
+    "description": "Sidebar Git panel: switch branches, stage changes, commit / push / pull, AI commit messages, commit graph and diffs."
+  }
+}
