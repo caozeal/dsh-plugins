@@ -97,7 +97,8 @@ npm test          # = node --test test/*.test.mjs
 
 `test/live/` 下 V1–V17 的截图对应**旧版左侧面板布局**（RPC 协议、Host 行为与功能
 结论仍然有效）；新版右栏界面的实测证据是 `test/live/artifacts/V18-*.png`，
-说明见 `test/live/REPORT-v2-right-sidebar.md`。
+说明见 `test/live/REPORT-v2-right-sidebar.md`。所有截图已打码（会话列表/对话区模糊），
+处理规则见 [`test/live/artifacts/README.md`](test/live/artifacts/README.md)。
 
 ## 协议摘要
 
