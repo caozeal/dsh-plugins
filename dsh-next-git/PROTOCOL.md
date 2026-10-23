@@ -6,7 +6,7 @@
 ## 1. 包与文件布局
 
 ```
-git-manager/
+dsh-next-git/
   package.json          # dsh.bundle.patch + dsh.client；名字 dsh-next-git
   cordis.patch.yml      # insert: id: git-manager, name: dsh-next-git
   index.js              # Host 插件入口：export const inject / export function apply

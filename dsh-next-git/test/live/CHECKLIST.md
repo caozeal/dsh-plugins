@@ -1,6 +1,6 @@
 # Git Manager 插件 · 安装后 live 验证清单
 
-> 适用对象：`dsh-next-git`（本仓库 `git-manager/`），安装进 `~/.dsh/profiles/web` 后，
+> 适用对象：`dsh-next-git`（本仓库 `dsh-next-git/`），安装进 `~/.dsh/profiles/web` 后，
 > 在**当前正在运行的** DSH Web GUI 上做端到端验证。
 > 本文件中的每条命令都已在本机核对过可执行性；标注「实测」的行为本轮验证时已经跑过并记下结果。
 > 修订基准：2026-10-22，dsh `0.2.1-rc.2`，GUI 进程 pid 80684。
@@ -68,7 +68,7 @@ G -C /Users/caozeal/projects/dsh-plugins branch --show-current   # main
 G -C /Users/caozeal/projects/dsh-plugins log --oneline -1        # 6a6f122 fix: 手动停止的任务默认不发任何提醒
 G -C /Users/caozeal/projects/dsh-plugins status --porcelain      #  M long-task-reminder/lib/client.js
                                                                  #  M long-task-reminder/package.json
-                                                                 # ?? git-manager/
+                                                                 # ?? dsh-next-git/
 G -C /Users/caozeal/projects/dsh-plugins remote -v               # 空（没有 remote！）
 ```
 
@@ -149,7 +149,7 @@ node -e "const p=require('/Users/caozeal/.dsh/profiles/web/package.json'); conso
 ls -l ~/.dsh/profiles/web/node_modules/dsh-next-git      # 期望存在（link: 或软链）
 ```
 
-预期：`bundles` 数组含 `"dsh-next-git"`，`dependencies` 里有它的 spec（`link:/Users/caozeal/projects/dsh-plugins/git-manager` 或版本号）。
+预期：`bundles` 数组含 `"dsh-next-git"`，`dependencies` 里有它的 spec（`link:/Users/caozeal/projects/dsh-plugins/dsh-next-git` 或版本号）。
 注意：**不要**自己改这个文件去“帮忙”，安装只走 `plugin_manager`。
 
 ### H3. 插件管理器状态（宿主内视角）
@@ -237,19 +237,19 @@ agent-browser --session "$AGENT_BROWSER_SESSION" console --clear  # 读完后清
 
 ## 4. UI 逐条验证（真实点击；每条给操作、预期、判定方式）
 
-> 取证统一落到 `git-manager/test/live/artifacts/`：
+> 取证统一落到 `dsh-next-git/test/live/artifacts/`：
 > ```bash
-> mkdir -p /Users/caozeal/projects/dsh-plugins/git-manager/test/live/artifacts
+> mkdir -p /Users/caozeal/projects/dsh-plugins/dsh-next-git/test/live/artifacts
 > agent-browser --session "$AGENT_BROWSER_SESSION" screenshot --annotate \
->   /Users/caozeal/projects/dsh-plugins/git-manager/test/live/artifacts/V1-sidebar.png
+>   /Users/caozeal/projects/dsh-plugins/dsh-next-git/test/live/artifacts/V1-sidebar.png
 > ```
 > 网络证据：先 `network har start` 再操作，最后 `har stop`：记录面板真实发出的 op/cwd/响应。
 > ```bash
 > agent-browser --session "$AGENT_BROWSER_SESSION" network har start \
->   /Users/caozeal/projects/dsh-plugins/git-manager/test/live/artifacts/panel.har
+>   /Users/caozeal/projects/dsh-plugins/dsh-next-git/test/live/artifacts/panel.har
 > # …操作…
 > agent-browser --session "$AGENT_BROWSER_SESSION" network har stop \
->   /Users/caozeal/projects/dsh-plugins/git-manager/test/live/artifacts/panel.har
+>   /Users/caozeal/projects/dsh-plugins/dsh-next-git/test/live/artifacts/panel.har
 > ```
 >
 > **读取主区域文本**（下面多条复用；每段独立粘贴即可，`<main>` 元素不存在）：
@@ -318,7 +318,7 @@ G -C /Users/caozeal/projects/dsh-plugins status --porcelain
 ```
 
 操作：读面板左列（变更区）文本。
-预期基线（此刻）：`long-task-reminder/lib/client.js`（M，未暂存）、`long-task-reminder/package.json`（M，未暂存）、`git-manager/…`（未跟踪，porcelain 只列目录名 `git-manager/`，插件若用 `--untracked-files=all` 则列出具体文件——**两种都可接受**，只要与 API snapshot 的 `untracked` 一致）。
+预期基线（此刻）：`long-task-reminder/lib/client.js`（M，未暂存）、`long-task-reminder/package.json`（M，未暂存）、`dsh-next-git/…`（未跟踪，porcelain 只列目录名 `dsh-next-git/`，插件若用 `--untracked-files=all` 则列出具体文件——**两种都可接受**，只要与 API snapshot 的 `untracked` 一致）。
 判定：分组（已暂存/未暂存/未跟踪/冲突）+ 状态字母 + 路径与 CLI 对齐；分组标题存在。
 
 ### V5 点击文件 → diff 显示正确
@@ -339,19 +339,19 @@ G -C /Users/caozeal/projects/dsh-plugins diff --numstat -- long-task-reminder/li
 ### V6 暂存 / 取消暂存（用无害探针文件，可回滚）
 
 ```bash
-mkdir -p /Users/caozeal/projects/dsh-plugins/git-manager/test/live
-printf 'probe\n' > /Users/caozeal/projects/dsh-plugins/git-manager/test/live/.tmp-probe.txt
+mkdir -p /Users/caozeal/projects/dsh-plugins/dsh-next-git/test/live
+printf 'probe\n' > /Users/caozeal/projects/dsh-plugins/dsh-next-git/test/live/.tmp-probe.txt
 G -C /Users/caozeal/projects/dsh-plugins status --porcelain | grep tmp-probe
 ```
 
-操作（UI）：刷新面板 → 未跟踪组出现 `git-manager/test/live/.tmp-probe.txt`（或 `git-manager/`）→ 点该行「暂存」→ 期望移到「已暂存」组，状态字母 `A`；再点「取消暂存」→ 期望回到未跟踪/未暂存。
+操作（UI）：刷新面板 → 未跟踪组出现 `dsh-next-git/test/live/.tmp-probe.txt`（或 `dsh-next-git/`）→ 点该行「暂存」→ 期望移到「已暂存」组，状态字母 `A`；再点「取消暂存」→ 期望回到未跟踪/未暂存。
 每次操作后底部状态条应显示该 op 的输出（`stage`/`unstage` 的 `output`）。
 判定：三态（未跟踪 → 已暂存 → 未跟踪）都观察到 + `snapshot` 的 `status.staged` 与之同步。
 清理（**必做**）：
 
 ```bash
-G -C /Users/caozeal/projects/dsh-plugins restore --staged -- git-manager/test/live/.tmp-probe.txt 2>/dev/null || true
-rm -f /Users/caozeal/projects/dsh-plugins/git-manager/test/live/.tmp-probe.txt
+G -C /Users/caozeal/projects/dsh-plugins restore --staged -- dsh-next-git/test/live/.tmp-probe.txt 2>/dev/null || true
+rm -f /Users/caozeal/projects/dsh-plugins/dsh-next-git/test/live/.tmp-probe.txt
 ```
 
 ### V7 提交图显示
@@ -490,8 +490,8 @@ agent-browser --session "$AGENT_BROWSER_SESSION" network unroute
 
 ```bash
 cd /Users/caozeal/projects/dsh-plugins
-node git-manager/test/live/smoke.mjs                # 全绿退出码 0
-node git-manager/test/live/smoke.mjs --keep         # 失败时保留 disposable 仓库排查
+node dsh-next-git/test/live/smoke.mjs                # 全绿退出码 0
+node dsh-next-git/test/live/smoke.mjs --keep         # 失败时保留 disposable 仓库排查
 ```
 
 `smoke.mjs` 的行为（安装前已验证：路由 404 时以退出码 2 明确报「Host 半区未注册路由」）：
@@ -536,10 +536,10 @@ node git-manager/test/live/smoke.mjs --keep         # 失败时保留 disposable
 ## 7. 纪律与清理
 
 - 禁止：重启 dsh（`dsh-ctl.sh`）、改 `~/.dsh` 下任何配置、改插件 `src/` `lib/` `index.js` `package.json` `cordis.patch.yml`、跑 `pnpm install`、向真实仓库 commit / 切分支 / push。
-- 唯一可写目录：`git-manager/test/live/**`（含 `artifacts/`）。探针文件、截图、HAR 都放这里。
+- 唯一可写目录：`dsh-next-git/test/live/**`（含 `artifacts/`）。探针文件、截图、HAR 都放这里。
 - 每轮 UI 验证结束：
   ```bash
-  rm -f /Users/caozeal/projects/dsh-plugins/git-manager/test/live/.tmp-probe.txt
+  rm -f /Users/caozeal/projects/dsh-plugins/dsh-next-git/test/live/.tmp-probe.txt
   G -C /Users/caozeal/projects/dsh-plugins status --porcelain | grep -E 'tmp-probe|live/' || echo '工作区干净'
   ```
 - agent-browser 收尾：验证结束后 `agent-browser --session "$AGENT_BROWSER_SESSION" close`（避免常驻 daemon）。
