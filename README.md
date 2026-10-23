@@ -27,6 +27,24 @@ DSH（DeepSeek Harness）插件集合。每个子目录是一个独立插件，�
 详细功能、Host RPC 协议与设计说明见 [dsh-next-git/README.md](dsh-next-git/README.md)
 和 [dsh-next-git/PROTOCOL.md](dsh-next-git/PROTOCOL.md)。
 
+## 发布（维护者）
+
+`@caozeal/dsh-next-git` 通过 **npm Trusted Publishing（OIDC）** 自动发布，不需要 npm token：
+
+1. 修改 `dsh-next-git/package.json` 的 `version`（如 `0.1.1`）
+2. 提交后打同名 tag 并推送：
+
+```bash
+git tag v0.1.1
+git push origin main --tags
+```
+
+GitHub Actions（`.github/workflows/publish.yml`）会校验 tag 与版本号一致、跑单测、执行
+`npm publish --access public`，并由 npm 自动生成 provenance。
+
+首次使用需在 npm 包设置页配好 trusted publisher（GitHub Actions / caozeal / dsh-plugins /
+`publish.yml`，勾选 Allow npm publish）。
+
 ## 约定
 
 - 插件源码用**纯 ESM JavaScript + JSDoc**（零构建、可直接内联进动态插件；
