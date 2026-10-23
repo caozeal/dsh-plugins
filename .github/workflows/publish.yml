@@ -41,3 +41,8 @@ jobs:
 
       - name: Publish
         run: npm publish --access public
+        env:
+          # setup-node writes `_authToken=${NODE_AUTH_TOKEN}` into .npmrc; an unset
+          # value makes npm attempt token auth and surface a misleading 404 instead
+          # of falling through to the OIDC trusted-publishing flow.
+          NODE_AUTH_TOKEN: ''
