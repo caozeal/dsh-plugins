@@ -39,13 +39,8 @@ jobs:
       - name: Test
         run: npm test
 
-      - name: Check OIDC environment
-        run: |
-          echo "ACTIONS_ID_TOKEN_REQUEST_URL=${ACTIONS_ID_TOKEN_REQUEST_URL:+set}"
-          echo "ACTIONS_ID_TOKEN_REQUEST_TOKEN=${ACTIONS_ID_TOKEN_REQUEST_TOKEN:+set}"
-
       - name: Publish
-        run: npm publish --access public --loglevel verbose
+        run: npm publish --access public
         env:
           # setup-node writes `_authToken=${NODE_AUTH_TOKEN}` into .npmrc; an unset
           # value makes npm attempt token auth and surface a misleading 404 instead
