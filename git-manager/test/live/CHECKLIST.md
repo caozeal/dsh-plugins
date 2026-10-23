@@ -1,6 +1,6 @@
 # Git Manager 插件 · 安装后 live 验证清单
 
-> 适用对象：`dsh-plugin-git-manager`（本仓库 `git-manager/`），安装进 `~/.dsh/profiles/web` 后，
+> 适用对象：`dsh-next-git`（本仓库 `git-manager/`），安装进 `~/.dsh/profiles/web` 后，
 > 在**当前正在运行的** DSH Web GUI 上做端到端验证。
 > 本文件中的每条命令都已在本机核对过可执行性；标注「实测」的行为本轮验证时已经跑过并记下结果。
 > 修订基准：2026-10-22，dsh `0.2.1-rc.2`，GUI 进程 pid 80684。
@@ -88,7 +88,7 @@ G -C /Users/caozeal/projects/dsh-plugins remote -v               # 空（没有 
   ```
 
   → 判定「图标出现」最稳的方式不是猜文案，而是**对比安装前后 nav 内 button 的 aria-label 集合**。
-- 客户端 boot manifest：`window.__DSH_BOOT__.entries` 共 **74** 条，无 `dsh-plugin-git-manager`；
+- 客户端 boot manifest：`window.__DSH_BOOT__.entries` 共 **74** 条，无 `dsh-next-git`；
   `window.__ModuleLoader__.mode === "live"`；`rev = b3f78bd561a9`；release `0.2.1-rc.2/332895e`。
 - 主区域：`main` 是 keyed slot，`entryKey = activePanelId`（选中面板 id）；点侧边栏按钮 → layout 记录 `activePanelId` → 该 key 的注册项渲染到主区域。
   **注意（实测）**：页面里**没有** `<main>` 元素（`document.querySelectorAll('main').length === 0`）。主区域是 `div.pI_x6G_centerCol`，
@@ -145,11 +145,11 @@ curl -sS -b /tmp/gm-cookies.txt -H 'content-type: application/json' \
 ### H2. profile 里 bundle 已登记
 
 ```bash
-node -e "const p=require('/Users/caozeal/.dsh/profiles/web/package.json'); console.log(JSON.stringify({bundles:p.dsh.profile.bundles, dep:p.dependencies['dsh-plugin-git-manager']},null,1))"
-ls -l ~/.dsh/profiles/web/node_modules/dsh-plugin-git-manager      # 期望存在（link: 或软链）
+node -e "const p=require('/Users/caozeal/.dsh/profiles/web/package.json'); console.log(JSON.stringify({bundles:p.dsh.profile.bundles, dep:p.dependencies['dsh-next-git']},null,1))"
+ls -l ~/.dsh/profiles/web/node_modules/dsh-next-git      # 期望存在（link: 或软链）
 ```
 
-预期：`bundles` 数组含 `"dsh-plugin-git-manager"`，`dependencies` 里有它的 spec（`link:/Users/caozeal/projects/dsh-plugins/git-manager` 或版本号）。
+预期：`bundles` 数组含 `"dsh-next-git"`，`dependencies` 里有它的 spec（`link:/Users/caozeal/projects/dsh-plugins/git-manager` 或版本号）。
 注意：**不要**自己改这个文件去“帮忙”，安装只走 `plugin_manager`。
 
 ### H3. 插件管理器状态（宿主内视角）
@@ -160,7 +160,7 @@ ls -l ~/.dsh/profiles/web/node_modules/dsh-plugin-git-manager      # 期望存�
 plugin_manager action=list_plugins limit=100   # 必要时翻页 offset=100/200
 ```
 
-预期：出现 **bundle 行**（`moduleName` = `dsh-plugin-git-manager`，`fiberPhase: "active"`）以及其 patch 行（`entryId` 形如 `git-manager`，`enabled: true`）。
+预期：出现 **bundle 行**（`moduleName` = `dsh-next-git`，`fiberPhase: "active"`）以及其 patch 行（`entryId` 形如 `git-manager`，`enabled: true`）。
 判定：`fiberPhase` 为 active/PASS；若行存在但 `enabled:false` → 插件被启用策略挡住；若行不存在 → bundle 未登记。
 「启用/禁用」操作只由 Lead 用 `plugin_manager action=set_plugin` 做，验证员只读观察。
 
@@ -177,10 +177,10 @@ tail -f /Users/caozeal/projects/deepseek-harness/dsh-wg.log   # 实时跟随，�
 ### H5. （可选）bundle 自带 patch 的 insert 行
 
 ```bash
-grep -n -A6 "id: git-manager" ~/.dsh/profiles/web/node_modules/dsh-plugin-git-manager/cordis.patch.yml
+grep -n -A6 "id: git-manager" ~/.dsh/profiles/web/node_modules/dsh-next-git/cordis.patch.yml
 ```
 
-预期：`insert:` 下有 `id: git-manager`、`name: dsh-plugin-git-manager`。
+预期：`insert:` 下有 `id: git-manager`、`name: dsh-next-git`。
 （`dsh.bundle.patch` 机制：profile 的 `dsh.profile.bundles` 选中包 → 读它的 `cordis.patch.yml` 覆盖层，不需要往 profile 的 patch 里手写。）
 
 ---
@@ -201,7 +201,7 @@ cat <<'EOF' | agent-browser --session "$AGENT_BROWSER_SESSION" eval --stdin
 EOF
 ```
 
-预期（安装后 + 页面刷新）：`hasGitManager: true`，`entryCount: 75`（74 + 1），且该 entry 的 `url` 指向 `dsh-plugin-git-manager/lib/client.js`。
+预期（安装后 + 页面刷新）：`hasGitManager: true`，`entryCount: 75`（74 + 1），且该 entry 的 `url` 指向 `dsh-next-git/lib/client.js`。
 判定：`false` → 客户端半区没进 boot manifest（bundle 未登记 / dsh.client 声明缺失 / 需刷新）。
 
 ### C2. 侧边栏多出一个面板按钮（不猜文案）
@@ -518,7 +518,7 @@ node git-manager/test/live/smoke.mjs --keep         # 失败时保留 disposable
 
 1. H1 `POST /api/git-manager` → 200 + `repo.branch=main`；
 2. H3 plugin_manager 中 bundle 行 `fiberPhase=active`；
-3. C1 boot entries 含 `dsh-plugin-git-manager`；
+3. C1 boot entries 含 `dsh-next-git`；
 4. C2 侧边栏多一个带图标的按钮；
 5. V2 面板可打开（`aria-current="page"` + 主区域内容）；
 6. V3/V4/V5/V7/V8 的数据与 CLI 逐项一致；

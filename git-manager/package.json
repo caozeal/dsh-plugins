@@ -1,5 +1,5 @@
 {
-  "name": "dsh-plugin-git-manager",
+  "name": "dsh-next-git",
   "version": "0.1.0",
   "private": true,
   "description": "DSH Git 管理插件：分支切换、变更暂存、提交/推送/拉取、AI 提交信息、提交图与 diff 查看",

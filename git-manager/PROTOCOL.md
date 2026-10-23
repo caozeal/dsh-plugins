@@ -7,8 +7,8 @@
 
 ```
 git-manager/
-  package.json          # dsh.bundle.patch + dsh.client；名字 dsh-plugin-git-manager
-  cordis.patch.yml      # insert: id: git-manager, name: dsh-plugin-git-manager
+  package.json          # dsh.bundle.patch + dsh.client；名字 dsh-next-git
+  cordis.patch.yml      # insert: id: git-manager, name: dsh-next-git
   index.js              # Host 插件入口：export const inject / export function apply
   src/git.js            # git 进程执行 + 输出解析（纯函数，可单测）
   src/operations.js     # op 分发：每个 op 的实现（可单测，注入 executor）
@@ -343,7 +343,7 @@ hash 与 subject 列对齐；顶栏/tab/提交卡片/状态条固定 `flex:none`
 
 ```js
 window.__ModuleLoader__.load({
-  id: 'dsh-plugin-git-manager',
+  id: 'dsh-next-git',
   factory: (require) => {
     var module = { exports: {} }
     var exports = module.exports
@@ -357,5 +357,5 @@ window.__ModuleLoader__.load({
 })
 ```
 
-注意：`id` 必须等于 package name（`dsh-plugin-git-manager`）；`apply` 里不要有
+注意：`id` 必须等于 package name（`dsh-next-git`）；`apply` 里不要有
 factory 期副作用。
