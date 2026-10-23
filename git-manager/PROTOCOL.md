@@ -319,7 +319,11 @@ Host 端流程：
 `--dsw-alias-*` token 取；品牌视觉固定为 DeepSeek 蓝（`#4d6bfe` / `#2f49d6` /
 `#43c9ff`）——胶囊 tab、渐变主按钮、状态药丸、diff/commit 卡片、胖鲸鱼空态
 （bob + 气泡动画）；窄列用容器查询（`@container gm (max-width:430px)`）把顶栏
-按钮收成纯图标；宽屏（全屏）内容占满右栏；
+按钮收成纯图标、隐藏 graph 行尾作者/时间；宽屏（全屏）内容占满右栏；
+提交图不再直接贴 `git log --graph` 的 ASCII 字符，而是按 lane 解析成每行 SVG
+（20px 行高、8px lane、最多 10 lane，超出淡出），保证多分支/大量提交时竖线连续、
+hash 与 subject 列对齐；顶栏/tab/提交卡片/状态条固定 `flex:none`，长列表只压缩
+`.gm-scroll`（`flex:1 1 0`），不会再把顶栏挤扁；
 全部暂存/取消按钮放内容顶部；提交区固定在底部始终可见。
 
 - 空态：无会话 → 提示先选择会话；`repo.isRepo === false` → 提示当前目录不是 Git 仓库；
