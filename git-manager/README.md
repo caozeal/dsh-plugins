@@ -127,7 +127,8 @@ op 一览：`snapshot` `graph` `diff` `stage` `unstage` `switchBranch` `deleteBr
   `conversation.session.header.utilities` 注册入口按钮；文案走 Client locale 服务
   （zh/en 108 个 key）。视觉以 DeepSeek 蓝为基调 + 胖鲸鱼吉祥物：圆角胶囊 tab、
   渐变主按钮、鲸鱼空态（bob 动画 + 气泡）、状态药丸、diff/commit 卡片，全部是
-  组件内 CSS + 主题 token（见 `lib/client.js` 里的 `PANEL_CSS`）。
+  组件内 CSS + 主题 token（见 `lib/client.js` 里的 `PANEL_CSS`）。提交图用
+  SVG lane 渲染（20px 行高、最多 10 lane），长历史/多分支下不会挤掉文字。
 - **失败可见**：git 非 0 退出把 stderr 摘要带回 UI，在底部状态条展示；
   只读操作（snapshot/graph/diff）不会阻断面板。
 - **AI 是可选能力**：缺少 `llm` / `agentDefaultModel` 时 `aiCommit` 自动降级，
