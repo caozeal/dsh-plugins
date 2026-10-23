@@ -1,6 +1,6 @@
 # dsh-next-git — DSH Web 右侧边栏 Git 管理面板
 
-> 原名 `dsh-plugin-git-manager`，2026-10 起包名改为 `dsh-next-git`（功能、目录不变）。
+> 原名 `dsh-plugin-git-manager`，2026-10 起包名改为 `@caozeal/dsh-next-git`（目录仍为 `dsh-next-git/`，功能不变）。
 
 在 DSH Web GUI **会话的右侧边栏**加一个 Git tab（2026-10-22 从左侧全局面板迁移而来）：
 会话头部点 **Git 图标**直接打开（会自动展开右栏），或在右栏的「+ → 开始」指南页里
@@ -50,6 +50,8 @@ dsh-next-git/
 ```bash
 # 在 dsh-plugins 仓库内
 dsh plugin --profile web add /Users/caozeal/projects/dsh-plugins/dsh-next-git
+# 或从 npm 安装（发布后）：
+dsh plugin --profile web add @caozeal/dsh-next-git
 ```
 
 或由 agent 用 `plugin_manager` 的 `install_bundle` 安装（推荐，profile 配置由
@@ -69,7 +71,7 @@ Host 半区（`/api/git-manager` 路由）随 Loader 生效；若页面已加载
 2. 在 `~/.dsh/profiles/web/cordis.patch.yml` 末尾追加：
    ```yaml
    - id: git-manager
-     name: dsh-next-git
+     name: "@caozeal/dsh-next-git"
    ```
 3. 重启 Web 服务。
 

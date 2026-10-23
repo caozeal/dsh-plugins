@@ -1,4 +1,4 @@
-// Browser bundle for dsh-next-git.
+// Browser bundle for @caozeal/dsh-next-git.
 //
 // Registers two contributions into the shipped Harness Web UI:
 //   - `sidebar.panellist`  : the Git icon in the global panel list
@@ -7,7 +7,7 @@
 // has no build step and must stay a single classic script. Copy the shell
 // pattern from the other plugins in this repository.
 window.__ModuleLoader__.load({
-  id: 'dsh-next-git',
+  id: '@caozeal/dsh-next-git',
   factory: (require) => {
     var module = { exports: {} }
     var exports = module.exports
