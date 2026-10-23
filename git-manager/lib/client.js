@@ -287,7 +287,7 @@ window.__ModuleLoader__.load({
         animation:gm-fade .18s ease;
       }
       .gm-root *, .gm-root *::before, .gm-root *::after { box-sizing:border-box; }
-      .gm-scroll { flex:1 1 auto; min-height:0; overflow:auto; scrollbar-width:thin;
+      .gm-scroll { flex:1 1 0; min-height:0; overflow:auto; scrollbar-width:thin;
         scrollbar-color:var(--gm-blue-28) transparent; }
       .gm-scroll::-webkit-scrollbar { width:10px; height:10px; }
       .gm-scroll::-webkit-scrollbar-thumb { background:var(--gm-blue-28); border-radius:99px; border:3px solid transparent; background-clip:content-box; }
@@ -303,7 +303,7 @@ window.__ModuleLoader__.load({
         filter:drop-shadow(0 1px 3px var(--gm-blue-28)); }
 
       /* ---- playful top bar ---------------------------------------------- */
-      .gm-top { position:relative; display:flex; flex-direction:column; gap:7px; padding:10px 12px 9px;
+      .gm-top { position:relative; flex:none; display:flex; flex-direction:column; gap:7px; padding:10px 12px 9px;
         border-bottom:1px solid var(--gm-line); overflow:hidden;
         background:linear-gradient(135deg, color-mix(in srgb, var(--gm-blue) 12%, var(--gm-card)), var(--gm-card) 72%); }
       .gm-top::before { content:''; position:absolute; right:-34px; top:-46px; width:132px; height:132px; border-radius:50%;
@@ -361,7 +361,7 @@ window.__ModuleLoader__.load({
       .gm-badge.warn { color:var(--gm-warn); border-color:color-mix(in srgb, var(--gm-warn) 38%, transparent); background:color-mix(in srgb, var(--gm-warn) 10%, transparent); }
 
       /* ---- pill tabs ----------------------------------------------------- */
-      .gm-tabs { display:flex; align-items:center; gap:4px; padding:7px 10px; border-bottom:1px solid var(--gm-line);
+      .gm-tabs { flex:none; display:flex; align-items:center; gap:4px; padding:7px 10px; border-bottom:1px solid var(--gm-line);
         background:var(--gm-card); overflow-x:auto; scrollbar-width:none; }
       .gm-tabs::-webkit-scrollbar { display:none; }
       .gm-tab { display:inline-flex; align-items:center; gap:5px; height:27px; padding:0 11px; border-radius:999px;
@@ -406,17 +406,23 @@ window.__ModuleLoader__.load({
         border:1px solid color-mix(in srgb, var(--gm-err) 28%, transparent); }
 
       /* ---- graph --------------------------------------------------------- */
-      .gm-graph { padding:6px 0 14px; font-family:${mono}; font-size:11.5px; }
-      .gm-grow { display:flex; align-items:center; gap:6px; min-height:24px; padding:2px 10px; margin:0 6px;
+      .gm-graph { padding:6px 0 14px; font-family:${mono}; font-size:11.5px; line-height:20px; }
+      .gm-grow { display:flex; align-items:center; gap:6px; min-height:20px; padding:0 10px; margin:0 6px;
         border-radius:9px; cursor:pointer; transition:background .12s; }
       .gm-grow:hover { background:var(--gm-blue-06); }
       .gm-grow.active { background:var(--gm-blue-12); box-shadow:inset 3px 0 0 var(--gm-blue); }
-      .gm-gprefix { flex:none; white-space:pre; color:var(--gm-blue); opacity:.85; }
+      .gm-glane { flex:none; overflow:hidden;
+        -webkit-mask-image:linear-gradient(90deg, #000 88%, transparent 100%);
+        mask-image:linear-gradient(90deg, #000 88%, transparent 100%); }
+      .gm-glane line { stroke:var(--gm-blue); stroke-width:1.6; stroke-linecap:round; opacity:.65; }
+      .gm-glane circle { fill:var(--gm-blue); stroke:var(--gm-bg); stroke-width:1.4; }
+      .gm-grow.active .gm-glane line, .gm-grow:hover .gm-glane line { opacity:.95; }
+      .gm-grow.active .gm-glane circle, .gm-grow:hover .gm-glane circle { fill:var(--gm-deep); }
       .gm-hash { flex:none; font-size:10.5px; color:var(--gm-blue); opacity:.75; }
-      .gm-subject { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:inherit; }
+      .gm-subject { flex:1 1 auto; min-width:56px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:inherit; }
       .gm-meta { flex:none; max-width:145px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
         font-size:10.5px; color:var(--gm-dim); font-family:inherit; }
-      .gm-ref { height:17px; }
+      .gm-ref { height:17px; max-width:120px; overflow:hidden; text-overflow:ellipsis; display:inline-block; }
 
       /* ---- branches ------------------------------------------------------ */
       .gm-branch { display:flex; align-items:center; gap:6px; min-height:30px; padding:3px 10px; margin:0 6px;
@@ -451,7 +457,7 @@ window.__ModuleLoader__.load({
       .gm-meta-line { padding:2px 12px; color:var(--gm-dim); font-style:italic; }
 
       /* ---- commit card --------------------------------------------------- */
-      .gm-commit { position:relative; overflow:hidden; display:flex; flex-direction:column; gap:7px; margin:8px 10px 10px; padding:11px 10px 10px;
+      .gm-commit { position:relative; flex:none; overflow:hidden; display:flex; flex-direction:column; gap:7px; margin:8px 10px 10px; padding:11px 10px 10px;
         border-radius:14px; border:1px solid var(--gm-blue-18);
         background:linear-gradient(180deg, color-mix(in srgb, var(--gm-blue) 6%, var(--gm-card)), var(--gm-card));
         box-shadow:0 8px 22px color-mix(in srgb, var(--gm-blue) 10%, transparent); }
@@ -475,7 +481,7 @@ window.__ModuleLoader__.load({
       .gm-ai-line { font-size:10.5px; color:var(--gm-dim); }
 
       /* ---- status pill ---------------------------------------------------- */
-      .gm-status { display:flex; align-items:center; gap:6px; min-height:24px; padding:3px 11px;
+      .gm-status { flex:none; display:flex; align-items:center; gap:6px; min-height:24px; padding:3px 11px;
         margin:7px 10px 0; border-radius:999px; border:1px solid var(--gm-blue-12); background:var(--gm-blue-06);
         font-size:11px; color:var(--gm-dim); animation:gm-pop .18s ease; }
       .gm-dot { width:6px; height:6px; border-radius:50%; background:var(--gm-blue); flex:none;
@@ -487,7 +493,7 @@ window.__ModuleLoader__.load({
       .gm-status .gm-msg { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
       .gm-status .gm-msg.err { color:var(--gm-err); white-space:pre-wrap; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; }
       .gm-status .gm-msg.ok { color:var(--gm-ok); }
-      .gm-details { margin:7px 10px 0; }
+      .gm-details { flex:none; margin:7px 10px 0; }
       .gm-details > summary { list-style:none; }
       .gm-details > summary::-webkit-details-marker { display:none; }
       .gm-details[open] > summary { border-bottom-left-radius:10px; border-bottom-right-radius:10px; }
@@ -529,6 +535,7 @@ window.__ModuleLoader__.load({
         .gm-top .gm-btn { width:27px; padding:0; }
         .gm-repo { font-size:12.5px; }
         .gm-bmeta { display:none; }
+        .gm-meta { display:none; }
         .gm-empty-bubble { width:86px; height:86px; border-radius:28px; }
       }
     `
@@ -1334,12 +1341,26 @@ window.__ModuleLoader__.load({
       var lines = state.graph && state.graph.lines ? state.graph.lines : []
       if (state.graphLoading && lines.length === 0) return h(EmptyState, { spinner: true, title: tr('status.loading') })
       if (lines.length === 0) return h(EmptyState, { title: tr('graph.empty') })
+      // A stable graph column keeps hash/refs/subject aligned across rows. Histories with
+      // dozens of live lanes would otherwise push the text miles to the right, so the
+      // column is capped and the overflowing lanes fade out instead.
+      var GRAPH_MAX_COLS = 10
+      var maxPrefix = 2
+      for (var gi = 0; gi < lines.length; gi += 1) {
+        if ((lines[gi].graph || '').length > maxPrefix) maxPrefix = (lines[gi].graph || '').length
+      }
+      var graphCols = Math.min(maxPrefix, GRAPH_MAX_COLS)
       return h('div', { className: 'gm-scroll' },
         h('div', { className: 'gm-content-inner gm-graph' },
           lines.map(function (line, index) {
             if (!line.full) {
               return h('div', { key: 'g:' + index, className: 'gm-grow' },
-                h('span', { className: 'gm-gprefix' }, line.graph || ''))
+                h(GraphLane, {
+                  graph: line.graph || '',
+                  prev: index > 0 ? (lines[index - 1].graph || '') : '',
+                  next: index + 1 < lines.length ? (lines[index + 1].graph || '') : '',
+                  cols: graphCols,
+                }))
             }
             var selected = state.selected && state.selected.kind === 'commit' && state.selected.hash === line.full
             return h('div', {
@@ -1348,7 +1369,12 @@ window.__ModuleLoader__.load({
               title: line.full,
               onClick: function () { props.onSelectCommit(line) },
             },
-              h('span', { className: 'gm-gprefix' }, line.graph || ''),
+              h(GraphLane, {
+                graph: line.graph || '',
+                prev: index > 0 ? (lines[index - 1].graph || '') : '',
+                next: index + 1 < lines.length ? (lines[index + 1].graph || '') : '',
+                cols: graphCols,
+              }),
               h('span', { className: 'gm-hash' }, line.hash),
               line.refs && line.refs.length > 0
                 ? h('span', { className: 'gm-row', style: { gap: '4px', flex: 'none' } }, line.refs.map(function (ref, refIndex) {
@@ -1361,6 +1387,66 @@ window.__ModuleLoader__.load({
               h('span', { className: 'gm-subject' }, line.subject),
               h('span', { className: 'gm-meta' }, line.author + ' · ' + line.date))
           })))
+    }
+
+    var GRAPH_CELL = 8
+    var GRAPH_ROW = 20
+
+    function laneChar(text, lane) {
+      return lane >= 0 && lane < text.length ? text[lane] : ' '
+    }
+
+    /** Does lane `lane` continue into this row from the row above? */
+    function laneFromAbove(prev, lane) {
+      var here = laneChar(prev, lane)
+      if (here === '|' || here === '*') return true
+      if (laneChar(prev, lane + 1) === '/') return true
+      if (here === '\\') return true
+      return false
+    }
+
+    /** Does lane `lane` continue into the next row? */
+    function laneToBelow(next, lane) {
+      var here = laneChar(next, lane)
+      if (here === '|' || here === '*') return true
+      if (here === '/') return true
+      if (laneChar(next, lane + 1) === '\\') return true
+      return false
+    }
+
+    /**
+     * Draws one row of the commit graph as vector lanes, so vertical lines stay
+     * continuous across rows (ASCII glyphs leave gaps at 20px row heights).
+     */
+    function GraphLane(props) {
+      var graph = props.graph || ''
+      var prev = props.prev || ''
+      var next = props.next || ''
+      var cols = props.cols
+      var cell = GRAPH_CELL
+      var row = GRAPH_ROW
+      var parts = []
+      for (var i = 0; i < cols; i += 1) {
+        var ch = laneChar(graph, i)
+        var cx = (i + 0.5) * cell
+        if (ch === '|') {
+          parts.push(h('line', { key: 'v' + i, x1: cx, y1: 0, x2: cx, y2: row }))
+        } else if (ch === '/') {
+          parts.push(h('line', { key: 's' + i, x1: cx, y1: 0, x2: cx - cell, y2: row }))
+        } else if (ch === '\\') {
+          parts.push(h('line', { key: 'b' + i, x1: cx - cell, y1: 0, x2: cx, y2: row }))
+        } else if (ch === '_') {
+          parts.push(h('line', { key: 'h' + i, x1: cx, y1: row - 1, x2: cx + cell, y2: row - 1 }))
+        } else if (ch === '*') {
+          if (laneFromAbove(prev, i)) parts.push(h('line', { key: 'u' + i, x1: cx, y1: 0, x2: cx, y2: row / 2 }))
+          if (laneToBelow(next, i)) parts.push(h('line', { key: 'd' + i, x1: cx, y1: row / 2, x2: cx, y2: row }))
+          parts.push(h('circle', { key: 'c' + i, cx: cx, cy: row / 2, r: 3.2 }))
+        }
+      }
+      return h('svg', {
+        className: 'gm-glane', width: cols * cell, height: row,
+        viewBox: '0 0 ' + (cols * cell) + ' ' + row, 'aria-hidden': 'true',
+      }, parts)
     }
 
     function DiffView(props) {
