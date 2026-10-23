@@ -6,9 +6,9 @@
  * -> 后续 POST /api/git-manager 带 Cookie。token 每次 dsh 进程启动轮换，运行时从令牌文件读取。
  *
  * 用法：
- *   node git-manager/test/live/smoke.mjs                 # 只读检查跑当前仓库（cwd 参数默认取本文件所在仓库）
- *   node git-manager/test/live/smoke.mjs --cwd /some/repo
- *   node git-manager/test/live/smoke.mjs --keep          # 保留 disposable 仓库便于排查
+ *   node dsh-next-git/test/live/smoke.mjs                 # 只读检查跑当前仓库（cwd 参数默认取本文件所在仓库）
+ *   node dsh-next-git/test/live/smoke.mjs --cwd /some/repo
+ *   node dsh-next-git/test/live/smoke.mjs --keep          # 保留 disposable 仓库便于排查
  *
  * 环境变量：
  *   DSH_URL        默认 http://127.0.0.1:3080

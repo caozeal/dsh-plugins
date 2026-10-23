@@ -31,7 +31,7 @@
 ## 目录
 
 ```
-git-manager/
+dsh-next-git/
   PROTOCOL.md         # Host ↔ Client 冻结协议（RPC 形状与 UI 约定）
   package.json        # dsh.bundle.patch + dsh.client
   cordis.patch.yml    # 插入 git-manager 行
@@ -49,14 +49,14 @@ git-manager/
 
 ```bash
 # 在 dsh-plugins 仓库内
-dsh plugin --profile web add /Users/caozeal/projects/dsh-plugins/git-manager
+dsh plugin --profile web add /Users/caozeal/projects/dsh-plugins/dsh-next-git
 ```
 
 或由 agent 用 `plugin_manager` 的 `install_bundle` 安装（推荐，profile 配置由
 插件管理器写入，不手改 `~/.dsh/profiles/web`）：
 
 ```
-plugin_manager: action=install_bundle, target=/Users/caozeal/projects/dsh-plugins/git-manager
+plugin_manager: action=install_bundle, target=/Users/caozeal/projects/dsh-plugins/dsh-next-git
 ```
 
 安装后刷新/重开 Web 页面，左侧栏出现 Git 图标（在搜索/会话图标附近）。
