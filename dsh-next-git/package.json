@@ -1,7 +1,6 @@
 {
-  "name": "dsh-next-git",
+  "name": "@caozeal/dsh-next-git",
   "version": "0.1.0",
-  "private": true,
   "description": "DSH Git 管理插件：分支切换、变更暂存、提交/推送/拉取、AI 提交信息、提交图与 diff 查看",
   "type": "module",
   "main": "index.js",
@@ -42,5 +41,30 @@
   "scripts": {
     "test": "node --test test/*.test.mjs"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/caozeal/dsh-plugins.git",
+    "directory": "dsh-next-git"
+  },
+  "homepage": "https://github.com/caozeal/dsh-plugins/tree/main/dsh-next-git#readme",
+  "bugs": {
+    "url": "https://github.com/caozeal/dsh-plugins/issues"
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "deepseek",
+    "plugin",
+    "bundle",
+    "git",
+    "web-ui"
+  ],
+  "author": "caozeal",
+  "engines": {
+    "node": ">=22"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
 }
