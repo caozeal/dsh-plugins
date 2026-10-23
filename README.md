@@ -19,7 +19,7 @@ DSH（DeepSeek Harness）插件集合。每个子目录是一个独立插件，�
 
 - Web GUI → **插件** → 安装 bundle，选择本目录下的 `dsh-next-git/`；或
 - 用 `plugin_manager` 工具安装，`target=/path/to/dsh-plugins/dsh-next-git`。
-- 已发布到 npm 后，可直接安装：`dsh plugin --profile web add @caozeal/dsh-next-git`。
+- 已发布到 npm（<https://www.npmjs.com/package/@caozeal/dsh-next-git>），可直接安装：`dsh plugin --profile web add @caozeal/dsh-next-git`。
 
 装好后刷新页面，在任意会话头部点 **Git 图标**，或从右侧栏的「+ → 开始」指南里选
 「Git 管理」即可打开面板。面板跟随当前会话的 cwd，切换会话即切换仓库。
