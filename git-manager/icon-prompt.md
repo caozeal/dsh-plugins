@@ -30,8 +30,20 @@
 （`<image href="data:image/png;base64,…">`，约 150 KB，满足 DSH 图标 ≤256 KiB、
 svg/png 约束）。
 
-## 3. 落库文件
+## 3. 小鲸鱼图标（顶栏 / 提交卡片用）
+
+> Simple flat vector sticker icon of a cute chubby blue whale, side view facing right,
+> round fat body, big white belly, small tail fin on the left, tiny water spout with
+> three droplets above, one big friendly eye, DeepSeek blue body with cyan gradient
+> shading, thick dark-navy outline, flat cel shading, centered, plain white background,
+> no text, no background elements, designed to stay readable at 16-32 px.
+
+产出：去白底 → 裁剪 → 128×128 WebP（约 7 KB）内嵌为 `WHALE_IMG`，顶栏 28px 圆角
+胶囊内放 22px、提交卡片 22px 内放 18px；矢量小鲸鱼已移除。
+
+## 4. 落库文件
 
 - `icon.svg`：DSH 插件管理页图标（`exports['./icon']`，`iconOf` 内联为 data URL）。
 - `icon.png`：512px 源图，保留便于替换 / 重新出图。
-- `lib/client.js`：`MASCOT_IMG`（224px WebP base64）用于面板空态与右栏指南页图标。
+- `lib/client.js`：`MASCOT_IMG`（224px WebP base64）用于面板空态与右栏指南页图标；
+  `WHALE_IMG`（128px WebP base64）用于顶栏与提交卡片的小鲸鱼。

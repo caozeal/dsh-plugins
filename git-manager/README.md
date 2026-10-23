@@ -119,7 +119,8 @@ op 一览：`snapshot` `graph` `diff` `stage` `unstage` `switchBranch` `deleteBr
 - **图标 / 形象**：插件图标与空态形象是用 `custom-imagine` 生图技能生成的 Q 版
   鲸鱼娘（蓝色渐变长发、呆毛、鲸鳍耳、抱着白饭碗），参考社区 DeepSeek 鲸鱼娘与
   dsh-pet「蓝色大肥鱼」风格；prompt 与处理流程见 [`icon-prompt.md`](icon-prompt.md)。
-  `icon.svg` 内嵌 256px PNG 以满足 DSH 图标约束，空态用 224px WebP 内嵌。
+  `icon.svg` 内嵌 256px PNG 以满足 DSH 图标约束，空态用 224px WebP 内嵌；顶栏/
+  提交卡片的小鲸鱼也是生图产出（128px WebP），不再用手绘 SVG。
 - **Client 只做展示**：单文件 classic script + 组件内 `<style>`（class 前缀 `gm-`，
   卸载即移除；窄列容器查询收按钮为图标），向 `ctx.sidebarRightTabs` 注册
   tab 类型、向 keyed `sidebar.right.pane.tab` 注册 body、向
