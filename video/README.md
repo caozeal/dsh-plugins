@@ -19,6 +19,17 @@
 ACE-Step 那条见 [`audio/acestep/README.md`](audio/acestep/README.md)（含 4 个候选的试听
 文件与生成/配速命令）。
 
+### 在线播放页
+
+成片已发布到 Cloudflare：**<https://dsh-next-git.1017835747.workers.dev/>**（`video/pages.mjs`
+生成播放页，站点内容是 `index.html` + 封面 + 成片 mp4，不依赖仓库里的渲染器）。
+
+- 站点手工上传，**改片后要重新生成站点并重传**：
+  `node video/pages.mjs /tmp/cf-site`，再把 `video/out/*.mp4` 放进 `/tmp/cf-site/video/out/`
+- 已知限制：Cloudflare 静态托管**不响应 Range 请求**（实测 Workers 与 Pages 都是整包返回），
+  所以拖动进度条会从头下载；38 秒片子影响有限
+- GitHub Release `v0.1.4` 的附件保留了同一份 mp4，可作为下载备份
+
 `out/`、`audio/*.wav`、`audio/acestep/*.flac` 都在 `.gitignore` 里（都能本地重新生成，
 成片改一版就翻倍，不适合进 git）。进仓库的是：渲染器源码 `src/`、素材 `assets/`、
 预览帧 `docs/`、配乐脚本，以及 `audio/acestep/listen/` 那 5 个候选试听 mp3（每个约 0.9 MB，

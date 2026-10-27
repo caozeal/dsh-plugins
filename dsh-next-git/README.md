@@ -6,9 +6,9 @@
 
 <div align="center">
 
-[![dsh-next-git 宣传片](https://raw.githubusercontent.com/caozeal/dsh-plugins/main/video/docs/poster-title.png)](https://github.com/caozeal/dsh-plugins/releases/download/v0.1.4/dsh-next-git-promo-mockup.mp4)
+[![dsh-next-git 宣传片](https://raw.githubusercontent.com/caozeal/dsh-plugins/main/video/docs/poster-title.png)](https://dsh-next-git.1017835747.workers.dev/)
 
-**▶ 点封面看 38 秒介绍片**（1080p60，无真机画面，可自由分发）
+**▶ 点封面看 38 秒介绍片** —— <https://dsh-next-git.1017835747.workers.dev/>（1080p60，无真机画面，可自由分发）
 
 </div>
 

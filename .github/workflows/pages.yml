@@ -1,0 +1,85 @@
+name: Publish promo page
+
+# 把宣传片成片发布到 GitHub Pages。
+# 成片 mp4 不进 git（改一版就翻倍），所以这里在 CI 里用 ffmpeg 现场合成：
+#   画面 = 仓库里的逐帧 PNG（video/frames/，mock 渲染产物，约 1134 张）
+#   音频 = 仓库里的 ACE-Step 配乐（video/audio/acestep/bgm-ace.wav）
+# 渲染器源码留在仓库，改文案后在本地跑 video/render.sh 重出帧与音频即可。
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'video/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+
+      - name: Install ffmpeg
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+
+      - name: Build page shell
+        run: node video/pages.mjs "$RUNNER_TEMP/site"
+
+      - name: Encode clips from committed frames
+        run: |
+          set -euo pipefail
+          FPS=30
+          TOTAL=$(node -e "import('./video/src/core/timeline.js').then(m=>console.log(m.TOTAL.toFixed(2)))")
+          FRAMES=video/frames
+          mkdir -p "$RUNNER_TEMP/site/video/out"
+          test -d "$FRAMES" || { echo "::error::缺少 video/frames，先在本地跑 video/render.sh"; exit 1; }
+
+          # 与 render.sh 完全一致的编码参数：30fps 帧 -> 60fps + 淡入淡出 -> 轻缓推镜
+          ffmpeg -y -hide_banner -loglevel error -framerate $FPS -i "$FRAMES/f%05d.png" \
+            -vf "fps=60,fade=t=in:st=0:d=0.6,fade=t=out:st=$(node -e "console.log(($TOTAL-0.9).toFixed(2))"):d=0.9,format=yuv420p" \
+            -c:v libx264 -preset veryfast -crf 20 -profile:v high -level 4.2 \
+            -movflags +faststart "$RUNNER_TEMP/base.mp4"
+
+          NR=$(node -e "console.log(Math.round($TOTAL*60)-1)")
+          ffmpeg -y -hide_banner -loglevel error -i "$RUNNER_TEMP/base.mp4" \
+            -vf "zoompan=z='1.011+0.011*cos(PI*on/$NR)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s=1920x1080:fps=60,format=yuv420p" \
+            -c:v libx264 -preset medium -crf 20 -profile:v high -level 4.2 -movflags +faststart \
+            "$RUNNER_TEMP/silent.mp4"
+
+          ffmpeg -y -hide_banner -loglevel error -i "$RUNNER_TEMP/silent.mp4" \
+            -i video/audio/acestep/bgm-ace.wav \
+            -map 0:v:0 -map 1:a:0 -c:v copy -c:a aac -b:a 192k -ar 48000 -shortest \
+            -movflags +faststart "$RUNNER_TEMP/site/video/out/dsh-next-git-promo-mockup.mp4"
+
+          cp "$RUNNER_TEMP/silent.mp4" "$RUNNER_TEMP/site/video/out/dsh-next-git-promo-silent.mp4"
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: ${{ runner.temp }}/site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
