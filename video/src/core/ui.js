@@ -235,3 +235,186 @@ export function GraphRow({ lanes, dots, edges, hash, refs = [], sub, who, on = f
     </div>
   );
 }
+
+/* ---------------------------------------------------------------- scenes --
+ * Mock panel bodies used by the promo instead of real screenshots: the whole
+ * panel (header, tabs, lists, diff, graph) is rendered at run time, so the film
+ * never depends on a live DSH session or a captured screen.
+ */
+
+const BRANCHES = [
+  { name: 'main', tag: '当前', ahead: '↑1', sub: 'feat(ai-commit): 用默认模型生成 Conventional 提交信息', on: true },
+  { name: 'feature/panel', tag: '', ahead: '', sub: 'style: DeepSeek 蓝 + 胖鲸鱼视觉与动效' },
+  { name: 'feature/graph', tag: '', ahead: '', sub: 'feat(graph): SVG lane 渲染，长历史不挤文字' },
+  { name: 'fix/clean-env', tag: '', ahead: '', sub: 'fix: cleanGitEnv 用 undefined 墓碑删继承的坏 GIT_CONFIG' },
+];
+
+export function BranchList({ rows = BRANCHES } = {}) {
+  return (
+    <div class="gm-list">
+      <div class="gm-group"><i />本地分支 4</div>
+      {rows.map((b) => (
+        <div class={`gm-branch${b.on ? ' on' : ''}`}>
+          <span class="br-icon">⑂</span>
+          <span class="br-name">{b.name}</span>
+          {b.tag ? <span class="gm-pill">{b.tag}</span> : null}
+          {b.ahead ? <span class="gm-ahead2">{b.ahead}</span> : null}
+          <span class="br-sub">{b.sub}</span>
+        </div>
+      ))}
+      <div class="gm-group"><i />远程分支 2</div>
+      {['origin/main', 'origin/feature/panel'].map((n) => (
+        <div class="gm-branch"><span class="br-icon dim">⑂</span><span class="br-name dim">{n}</span>
+          <span class="br-sub">点远程分支自动建同名跟踪分支</span></div>
+      ))}
+    </div>
+  );
+}
+
+const CHANGE_FILES = [
+  ['mod', 'src/client.js', '+38'],
+  ['mod', 'src/git.js', '+12'],
+  ['new', 'src/ai-commit.js', '+96'],
+  ['untracked', 'docs/PROTOCOL.md', '?'],
+];
+
+export function ChangeList({ files = CHANGE_FILES } = {}) {
+  return (
+    <div class="gm-list">
+      <div class="gm-row">
+        <span class="gm-chip">+ 全部暂存</span>
+        <span class="gm-chip dim">− 全部取消暂存</span>
+      </div>
+      <div class="gm-group"><i />未暂存 3</div>
+      {files.filter((f) => f[0] !== 'untracked').map(([k, p, n]) => (
+        <div class="gm-file">
+          <span class={`st ${k === 'new' ? 'new' : 'mod'}`}>{k === 'new' ? 'A' : 'M'}</span>
+          <span class="path">{p}</span>
+          <span class="plus">{n}</span>
+        </div>
+      ))}
+      <div class="gm-group untracked"><i />未跟踪 1</div>
+      {files.filter((f) => f[0] === 'untracked').map(([, p]) => (
+        <div class="gm-file"><span class="st new">?</span><span class="path">{p}</span><span class="plus">+</span></div>
+      ))}
+      <div class="gm-group"><i />冲突 0</div>
+      <div class="gm-empty-mini">没有冲突，pull 随时可用</div>
+    </div>
+  );
+}
+
+const DIFF_LINES = [
+  { o: 114, n: 114, t: 'ctx', x: 'export function stage(params) {' },
+  { o: 115, n: 115, t: 'ctx', x: '  assertRepo(params.cwd);' },
+  { t: 'del', o: 116, x: '  return runGit(["add", "-A"], cwd);' },
+  { t: 'add', n: 116, x: '  const files = params.files ?? null;' },
+  { t: 'add', n: 117, x: '  // 单文件或整批暂存都走同一条路径' },
+  { t: 'add', n: 118, x: '  return runGit(files ? ["add", "--", ...files] : ["add", "-A"], cwd);' },
+  { o: 117, n: 119, t: 'ctx', x: '}' },
+];
+
+export function DiffView({ file = 'src/operations.js', add = 12, del = 3 } = {}) {
+  return (
+    <div class="gm-list">
+      <div class="gm-diffhead">工作区 <b>{file}</b> <span class="gm-add">+{add}</span> <span class="gm-del">-{del}</span></div>
+      <div class="gm-hunk">@@ -114,4 +114,7 @@ export function stage</div>
+      {DIFF_LINES.map((l) => (
+        <div class={`gm-line ${l.t === 'add' ? 'add' : l.t === 'del' ? 'del' : ''}`}>
+          <span class="no">{l.o ?? ''}</span><span class="no">{l.n ?? ''}</span>
+          <span class="tx">{l.t === 'add' ? '+' : l.t === 'del' ? '-' : ' '}{l.x}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const GRAPH_ROWS = [
+  ['a41c9e7', [['HEAD → main', 'head'], ['origin/main', 'remote']], 'feat(ai-commit): 用默认模型生成 Conventional 提交信息', '2 分钟前'],
+  ['5d4e1b2', [], 'feat(graph): SVG lane 渲染，长历史不挤文字', '12 分钟前'],
+  ['e77a03c', [['feature/panel', 'dev']], 'feat(panel): 右侧栏 tab + 会话头部入口', '40 分钟前'],
+  ['9b2f5d1', [], 'style: DeepSeek 蓝 + 胖鲸鱼视觉与动效', '1 小时前'],
+  ['2c8d64a', [], 'fix: cleanGitEnv 用 undefined 墓碑删坏 GIT_CONFIG', '3 小时前'],
+  ['b91e7f5', [], 'test: 32 条单测 + 临时真实仓库集成测试', '昨天'],
+];
+
+function LaneSvg({ rows = GRAPH_ROWS.length }) {
+  const h = rows * 27;
+  const parts = [];
+  parts.push(<path d={`M9,10 L9,${h - 14}`} stroke="#3b82f6" stroke-width="2.2" fill="none" opacity=".8" />);
+  parts.push(<path d={`M9,${13.5 + 2 * 27 - 6} C9,${13.5 + 2 * 27 + 8} 24,${13.5 + 2 * 27 - 4} 24,${13.5 + 2 * 27 + 14} L24,${13.5 + 4 * 27 - 6} C24,${13.5 + 4 * 27 + 10} 9,${13.5 + 4 * 27 + 6} 9,${13.5 + 5 * 27 - 4}`} stroke="#22c55e" stroke-width="2.2" fill="none" opacity=".85" />);
+  for (let i = 0; i < rows; i++) {
+    const lane = i === 2 || i === 3 ? 1 : 0;
+    parts.push(<circle cx={9 + lane * 15} cy={13.5 + i * 27} r="4.6" fill={lane ? '#22c55e' : '#3b82f6'} stroke="#fff" stroke-width="1.8" />);
+  }
+  return <svg width="66" height={h} viewBox={`0 0 66 ${h}`} style={{ flex: 'none' }}>{parts}</svg>;
+}
+
+export function GraphList({ rows = GRAPH_ROWS } = {}) {
+  return (
+    <div class="gm-list" style={{ display: 'flex', gap: '6px' }}>
+      <LaneSvg rows={rows.length} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {rows.map(([hash, refs, sub, when], i) => (
+          <div class="gm-grow" style={{ height: '27px' }}>
+            <span class="hash">{hash}</span>
+            {refs.map(([t, k]) => <span class={`gm-pill ${k}`}>{t}</span>)}
+            <span class="sub">{sub}</span>
+            <span class="when">{when}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Whole mock panel: `body` is one of the list components above. */
+export function MockPanel({ title = 'Git 管理', body = null, active = 'changes', counts = { changes: 3 }, commitValue = '', tall = false } = {}) {
+  return (
+    <div class={`gm-panel${tall ? ' tall' : ''}`}>
+      <div class="gm-panel-tab"><b>{title}</b><span class="x">×</span><span class="plus">＋</span>
+        <span class="right">▤ ⤢</span></div>
+      <PanelHead />
+      <PanelBar />
+      <Tabs active={active} counts={counts} />
+      <div class="gm-body">{body}</div>
+      <CommitBox value={commitValue} />
+    </div>
+  );
+}
+
+/* CSS for the mock scene bodies (prefixed gm-, same palette as the real panel). */
+export const MOCK_CSS = `
+.gm-panel { width: 100%; border-radius: 16px; overflow: hidden; background: #fff; color: #1b2340;
+  box-shadow: 0 30px 80px rgba(2,10,34,.55), 0 0 0 1px rgba(150,190,255,.25);
+  font-family: "PingFang SC","Hiragino Sans GB",-apple-system,sans-serif; }
+.gm-panel .gm-head { padding: 10px 14px 8px; }
+.gm-panel .gm-bar { padding: 6px 14px 9px; }
+.gm-panel .gm-body { padding: 10px 14px; }
+.gm-panel .gm-commit { border: 0; border-top: 1px solid #eef2fa; border-radius: 0; box-shadow: none; }
+.gm-panel-tab { display:flex; align-items:center; gap:8px; padding: 8px 14px; background:#f4f7fe; border-bottom:1px solid #e6ecf8;
+  font-size: 14px; color:#33415c; }
+.gm-panel-tab b { font-weight: 700; }
+.gm-panel-tab .x, .gm-panel-tab .plus { color:#98a6c0; font-size: 14px; }
+.gm-panel-tab .right { margin-left:auto; color:#8fa0bf; letter-spacing: 3px; font-size: 11px; }
+
+.gm-list { font-size: 12.5px; }
+.gm-branch { display:flex; align-items:center; gap:8px; padding: 7px 8px; border-radius: 9px; }
+.gm-branch.on { background: linear-gradient(90deg,#eef4ff,#f7faff); box-shadow: inset 0 0 0 1px #dbe7fb; }
+.gm-branch .br-icon { color:#3b82f6; font-size: 13px; }
+.gm-branch .br-icon.dim { color:#b9c6dc; }
+.gm-branch .br-name { font-weight: 700; color:#22304d; font-family:"SF Mono",Menlo,monospace; font-size:12px; }
+.gm-branch .br-name.dim { color:#8b9ab6; }
+.gm-branch .br-sub { margin-left:auto; color:#93a1bd; font-size:11.5px; max-width: 52%; overflow:hidden;
+  white-space:nowrap; text-overflow:ellipsis; }
+.gm-pill { font-size:10.5px; font-weight:700; padding:1px 8px; border-radius:999px; background:#eef3ff; color:#2f57c9;
+  border:1px solid #dbe6fb; }
+.gm-pill.head { background:#3358e8; color:#fff; border-color:#3358e8; }
+.gm-pill.remote { background:#f4f7ff; color:#6079b5; }
+.gm-pill.dev { background:#ecfdf5; color:#15803d; border-color:#c9f2da; }
+.gm-ahead2 { font-size:11px; color:#5b6b8c; background:#f3f6fd; border:1px solid #e3eaf8; border-radius:8px; padding:0 6px; }
+.gm-empty-mini { font-size: 11.5px; color:#a8b3c9; padding: 6px 10px; }
+.gm-grow { display:flex; align-items:center; gap:8px; font-size:12px; border-radius:7px; padding:0 6px; }
+.gm-grow .hash { font:500 11px "SF Mono",Menlo,monospace; color:#8492ae; width:62px; flex:none; }
+.gm-grow .sub { flex:1; color:#2f3d5c; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.gm-grow .when { font-size:10.5px; color:#a3aec4; flex:none; }
+`;

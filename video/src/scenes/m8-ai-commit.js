@@ -1,8 +1,11 @@
 import { h, pop } from '../core/engine.js';
 import { Stage } from '../core/stage.js';
+import { PANEL_CSS, MOCK_CSS, MockPanel, ChangeList } from '../core/ui.js';
 
-// 07 — AI 提交信息（逐字打字 + 真机截图佐证）
+// 07 — AI 提交信息（逐字打字 + mock 面板佐证）
 export const CSS = `
+${PANEL_CSS}
+${MOCK_CSS}
 .m8-left { position:absolute; left: 120px; top: 210px; width: 760px; }
 .m8-left h2 { margin:0; font-size: 62px; font-weight:800; letter-spacing:-.02em; line-height:1.14; }
 .m8-left h2 span { color:#8fd0ff; }
@@ -27,11 +30,9 @@ export const CSS = `
   background: linear-gradient(135deg,#4f7cff,#3358e8); box-shadow: 0 8px 18px rgba(51,88,232,.34); }
 .m8-note { margin-top: 14px; font-size: 17px; color:#8ba0c2; }
 .m8-note b { color:#8fd0ff; }
-.m8-shot { position:absolute; left: 940px; top: 540px; width: 780px; height: 340px; border-radius: 16px; overflow:hidden;
-  box-shadow: 0 30px 70px rgba(2,10,34,.6), 0 0 0 1px rgba(150,190,255,.26); background:#fff; }
-.m8-shot img { width: 100%; height: auto; margin-top: -64px; }
-.m8-shot .cap { position:absolute; left: 14px; bottom: 12px; font-size: 14px; color:#fff;
-  background: rgba(10,20,44,.66); padding: 5px 10px; border-radius: 8px; }
+.m8-shot { position:absolute; left: 900px; top: 505px; width: 880px; height: 440px; border-radius: 18px;
+  background:#f2f6fd; padding: 12px; box-shadow: 0 30px 70px rgba(2,10,34,.6), 0 0 0 1px rgba(150,190,255,.26); }
+.m8-shot .cap { position:absolute; left: 14px; bottom: 6px; font-size: 14px; color:#8ea3c4; }
 `;
 
 export const MEDIA_CSS = `
@@ -89,8 +90,8 @@ export function Scene() {
       </div>
 
       <div class="m8-shot" style={pop({ at: 1.3, dur: 0.85, from: 'translateY(44px)' })}>
-        <img src="assets/shot-empty.png" />
-        <span class="cap">真机截图 · 提交信息与 AI 生成入口</span>
+        <MockPanel active="changes" counts={{ changes: 3 }} body={<ChangeList />} commitValue={MSG} />
+        <span class="cap">提交信息框已填好，等你确认</span>
       </div>
     </div>
   );

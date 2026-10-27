@@ -3,12 +3,16 @@
 给 [`@caozeal/dsh-next-git`](../dsh-next-git/README.md) 做的 38 秒产品宣传片：H.264 / 1920×1080 / 60fps，
 带配乐与音效（AAC 192k）。
 
-**定稿**：`out/dsh-next-git-promo.mp4` —— mini 的 ComfyUI + ACE-Step 1.5 生成配乐，
-−14.7 LUFS / 真峰 −1.0 dBFS。两个备选（同画面，仅换音轨）：
+**「纯 mockup」版（可公开发布）**：`out/dsh-next-git-promo-mockup.mp4` —— 全片 UI 都是运行时
+渲染的面板组件（`src/core/ui.js` 里的 `MockPanel` 等），**不含任何真机截图或会话画面**，
+所以可以放心放在任何公开位置。配乐同为 ACE-Step，−14.7 LUFS / 真峰 −1.0 dBFS。
+
+保留版（含已打码的真机截图，内部使用）：`out/dsh-next-git-promo.mp4`，两个备选（同画面，仅换音轨）：
 
 | 文件 | 配乐 | 响度 |
 | --- | --- | --- |
-| `out/dsh-next-git-promo.mp4` | **ACE-Step 生成** ← 定稿 | −14.7 LUFS / −1.0 dBFS |
+| `out/dsh-next-git-promo-mockup.mp4` | **ACE-Step 生成 · 纯 mockup** ← 对外发布用 | −14.7 LUFS / −1.0 dBFS |
+| `out/dsh-next-git-promo.mp4` | 同一配乐 · 含真机截图（内部） | −14.7 LUFS / −1.0 dBFS |
 | `out/dsh-next-git-promo-synth.mp4` | 程序化合成（numpy/scipy 硬编码音效点） | −15.3 LUFS / −1.5 dBFS |
 | `out/dsh-next-git-promo-silent.mp4` | 无音轨，方便另外配音 | — |
 
@@ -25,9 +29,9 @@ ACE-Step 那条见 [`audio/acestep/README.md`](audio/acestep/README.md)（含 4 
 | 帧 | 内容 |
 | --- | --- |
 | ![标题](docs/poster-title.png) | 片头：插件图标 + 一句话价值主张 + 安装命令 |
-| ![分支](docs/frame-branches.png) | 分支切换（真机截图 + 高亮） |
+| ![面板](docs/frame-panel.png) | 会话侧栏里的完整仓库视图（mock 渲染） |
 | ![AI 提交信息](docs/frame-ai-commit.png) | AI 生成 Conventional Commits 提交信息 |
-| ![提交图](docs/frame-graph.png) | SVG lane 提交图 |
+| ![细节](docs/frame-details.png) | 鲸鱼娘空态 / 右栏指南 / 失败可见 |
 | ![片尾](docs/poster-end.png) | 三步安装 + npm / GitHub / MIT |
 
 ## 分镜
