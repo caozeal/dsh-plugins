@@ -51,11 +51,11 @@ dsh plugin --profile web add @caozeal/dsh-next-git
 ### 宣传片
 
 38 秒功能介绍片（1080p60，配乐用 ACE-Step 生成）。成片全片为运行时渲染的 mock 面板，
-不含真机截图与会话画面，可自由分发：
+不含真机截图与会话画面，可自由分发。
 
-[![宣传片片头](video/docs/poster-title.png)](https://dsh-next-git.1017835747.workers.dev/)
+https://github.com/user-attachments/assets/c57169b4-df00-450d-b4f0-7a2c64db03b6
 
-**点封面在线观看**：<https://dsh-next-git.1017835747.workers.dev/>（页面内直接播放，也可下载原片）。
+完整版（含无音轨版、可下载原片）：<https://dsh-next-git.1017835747.workers.dev/>
 分镜、素材来源与重新渲染方式见 [video/README.md](video/README.md)。
 
 ## 发布（维护者）
