@@ -4,6 +4,14 @@
 >
 > 原名 `dsh-plugin-git-manager`，2026-10 起包名改为 `@caozeal/dsh-next-git`（目录仍为 `dsh-next-git/`，功能不变）。
 
+<div align="center">
+
+[![dsh-next-git 宣传片](https://raw.githubusercontent.com/caozeal/dsh-plugins/main/video/docs/poster-title.png)](https://github.com/caozeal/dsh-plugins/releases/download/v0.1.4/dsh-next-git-promo-mockup.mp4)
+
+**▶ 点封面看 38 秒介绍片**（1080p60，无真机画面，可自由分发）
+
+</div>
+
 在 DSH Web GUI **会话的右侧边栏**加一个 Git tab（2026-10-22 从左侧全局面板迁移而来）：
 会话头部点 **Git 图标**直接打开（会自动展开右栏），或在右栏的「+ → 开始」指南页里
 选「Git 管理」。面板内容：

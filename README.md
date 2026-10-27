@@ -50,10 +50,12 @@ dsh plugin --profile web add @caozeal/dsh-next-git
 
 ### 宣传片
 
-38 秒功能介绍片（1080p60，配乐用 ACE-Step 生成）：`video/out/dsh-next-git-promo.mp4`。分镜脚本、
-素材来源与重新渲染方式见 [video/README.md](video/README.md)。
+38 秒功能介绍片（1080p60，配乐用 ACE-Step 生成）。成片全片为运行时渲染的 mock 面板，
+不含真机截图与会话画面，可自由分发：
 
-![宣传片片头](video/docs/poster-title.png)
+[![宣传片片头](video/docs/poster-title.png)](https://github.com/caozeal/dsh-plugins/releases/download/v0.1.4/dsh-next-git-promo-mockup.mp4)
+
+**点封面直接播放/下载**（7 MB）。分镜、素材来源与重新渲染方式见 [video/README.md](video/README.md)。
 
 ## 发布（维护者）
 
