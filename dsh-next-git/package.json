@@ -16,6 +16,8 @@
     "src",
     "lib/client.js",
     "cordis.patch.yml",
+    "screenshots.json",
+    "assets/screenshots",
     "locale/*.json",
     "icon.svg",
     "icon.png"
