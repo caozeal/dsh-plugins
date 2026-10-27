@@ -1,0 +1,4 @@
+# 派生音频不进 git：原始候选 flac 可由 acestep_gen.py 在 mini 的 ComfyUI 上重新生成，
+# bgm-ace.wav 可由 acestep_fit.py 从 candA.flac 重新拟合（几秒）。
+*.flac
+*.wav

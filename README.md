@@ -1,41 +1,69 @@
 # dsh-plugins — DeepSeek Harness 插件集
 
-DSH（DeepSeek Harness）插件集合。每个子目录是一个独立插件，自带 README、配置模板和
-测试，可按需装进 DSH Web profile 或某次会话的动态插件。
+DSH（DeepSeek Harness）插件集合。每个子目录是一个独立插件，自带 README、配置模板和测试，
+可按需装进 DSH Web profile 或某次会话的动态插件。
+
+- npm：<https://www.npmjs.com/package/@caozeal/dsh-next-git>
+- 许可证：MIT
+
+## 为什么用这个 Git 面板（而不是其他十来个同类插件）
+
+DSH 生态里「Web UI 里管 Git」的插件已经不少。我们不在功能清单上比谁多一项，而是把下面
+四件事做到位——它们恰好是最容易被忽略、也最容易坑到你的地方：
+
+| | dsh-next-git | 常见同类插件 |
+| --- | --- | --- |
+| **出错不静默** | git 非 0 退出时把 stderr 摘要回显到状态条；只读操作（snapshot / graph / diff）永不阻断面板 | 多数只在控制台报错或静默失败 |
+| **AI 只做可选增强** | 缺少 `llm` / 默认模型时自动降级为 `chore: 更新 N 个文件`，**永远不挡提交** | 部分插件在模型不可用时提交按钮直接失效 |
+| **协议冻结** | 有独立的 [`PROTOCOL.md`](dsh-next-git/PROTOCOL.md)，把 12 个 op 的请求/响应形状与 UI 约定写死（**冻结的只是我们自己的 Host↔Client 契约**，DSH 宿主升级仍可能要适配） | 通常只有 README 描述 |
+| **工程验收** | 32 条单测（`npm test` 全绿）+ 27 项 RPC smoke + 真机全链路截图证据（[`test/live/`](dsh-next-git/test/live/)），CI 校验 tag 后自动发版 | 多数无测试或仅手测 |
+
+另外几处细节：**跟随会话切换仓库**（面板 cwd 就是当前会话的 cwd）、**zh/en 全量文案**、
+**`--` 分隔与 ref/hash 白名单**的参数校验、**npm Trusted Publishing（OIDC）** 发布（带 provenance，
+不用 token）。
+
+> 能力上我们**没有**独占项：AI 提交信息、提交图、diff 都有别家在做（有的还带 PR/CI 联动、
+> 图片 diff、AI 解冲突）。选我们是因为稳定和可预期，不是因为别人做不到。
 
 ## 目录
 
 | 插件 | 目录 | 状态 | 说明 |
 | --- | --- | --- | --- |
-| Git 管理 | `dsh-next-git/` | ✅ 可用 | Web **右侧边栏** Git 面板：分支切换、暂存/提交/推送/拉取、AI 提交信息、提交图与 diff（32 单测 + 27 项 RPC smoke + 真机全链路验证） |
+| Git 管理 | [`dsh-next-git/`](dsh-next-git/) | ✅ 可用 | Web **右侧边栏** Git 面板：分支切换、暂存/提交/推送/拉取、AI 提交信息、提交图与 diff |
 
 ## 快速开始：Git 管理
 
-仓库地址：<https://github.com/caozeal/dsh-plugins>
+```bash
+dsh plugin --profile web add @caozeal/dsh-next-git
+```
 
-### 安装（Web profile）
+装好后刷新页面，在任意会话头部点 **Git 图标**（会自动展开右侧栏），或从右侧栏的
+「+ → 开始」指南里选「Git 管理」。面板跟随当前会话的 cwd，切换会话即切换仓库。
 
-本地插件以 bundle 形式安装（DSH 0.2.x，profile `~/.dsh/profiles/web`）：
+其他安装方式：
 
-- Web GUI → **插件** → 安装 bundle，选择本目录下的 `dsh-next-git/`；或
+- Web GUI → **插件** → 安装 bundle，选择本目录下的 `dsh-next-git/`；
 - 用 `plugin_manager` 工具安装，`target=/path/to/dsh-plugins/dsh-next-git`。
-- 已发布到 npm（<https://www.npmjs.com/package/@caozeal/dsh-next-git>），可直接安装：`dsh plugin --profile web add @caozeal/dsh-next-git`。
-
-装好后刷新页面，在任意会话头部点 **Git 图标**，或从右侧栏的「+ → 开始」指南里选
-「Git 管理」即可打开面板。面板跟随当前会话的 cwd，切换会话即切换仓库。
 
 详细功能、Host RPC 协议与设计说明见 [dsh-next-git/README.md](dsh-next-git/README.md)
 和 [dsh-next-git/PROTOCOL.md](dsh-next-git/PROTOCOL.md)。
+
+### 宣传片
+
+38 秒功能介绍片（1080p60，配乐用 ACE-Step 生成）：`video/out/dsh-next-git-promo.mp4`。分镜脚本、
+素材来源与重新渲染方式见 [video/README.md](video/README.md)。
+
+![宣传片片头](video/docs/poster-title.png)
 
 ## 发布（维护者）
 
 `@caozeal/dsh-next-git` 通过 **npm Trusted Publishing（OIDC）** 自动发布，不需要 npm token：
 
-1. 修改 `dsh-next-git/package.json` 的 `version`（如 `0.1.1`）
+1. 修改 `dsh-next-git/package.json` 的 `version`（如 `0.1.5`）
 2. 提交后打同名 tag 并推送：
 
 ```bash
-git tag v0.1.1
+git tag v0.1.5
 git push origin main --tags
 ```
 

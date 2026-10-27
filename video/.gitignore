@@ -1,0 +1,6 @@
+node_modules/
+build/
+
+# 成片 mp4 不进 git（6–7MB 二进制，改一版就翻倍）；用 ./render.sh 本地生成。
+# 需要分发时放 GitHub Release 附件。
+out/

@@ -1,0 +1,16 @@
+{
+  "file": "/Users/caozeal/projects/dsh-plugins/video/audio/bgm.wav",
+  "seconds": 37.8,
+  "sampleRate": 48000,
+  "channels": 2,
+  "peakDbfs": -1.5,
+  "rmsDbfs": -17.07,
+  "shortTermLufsLike": {
+    "min": -30.1,
+    "max": -12.1,
+    "mean": -18.9
+  },
+  "silentWindows": 0,
+  "bpm": 96.0,
+  "bars": 16
+}
