@@ -152,8 +152,10 @@ dsh-next-git/
   "lines": [
     { "graph": "* ", "hash": "1a2b3c4", "full": "<40位>",
       "refs": ["HEAD -> main", "origin/main"], "author": "Cao",
-      "date": "2 hours ago", "subject": "feat: add git plugin" },
-    { "graph": "|\\ ", "hash": null, "full": null, "refs": [], "author": "", "date": "", "subject": "" }
+      "date": "2 hours ago", "subject": "feat: add git plugin",
+      "colors": [0, -1, -1, -1, -1, -1, -1, -1], "refColor": 0 },
+    { "graph": "|\\ ", "hash": null, "full": null, "refs": [], "author": "", "date": "", "subject": "",
+      "colors": [0, -1, -1, -1, -1, -1, -1, -1] }
   ],
   "truncated": false
 }
@@ -162,6 +164,15 @@ dsh-next-git/
 实现建议：`git log --graph --date=relative --decorate=short
 --pretty=format:%H%x1f%h%x1f%an%x1f%ar%x1f%D%x1f%s -n <limit> --all`，
 逐行解析；`graph` 是行内 40 位 hash 之前的前缀（含末尾空格），`refs` 用 `, ` 切分。
+
+**配色字段（2026-10 新增，向后兼容——老 Client 忽略即可）**：
+
+- `colors`：与 `graph` 等长的色号数组，下标即 lane 序号；`-1` 表示该格无连接。
+  色号取自 `GRAPH_PALETTE_SIZE = 8` 的调色板，Client 提供对应的
+  `--gm-lane-0` … `--gm-lane-7` CSS 变量。
+  同一屏出现过的分支**保证互不同色**（按首次出现顺序分配，不是对名字取模）。
+- `refColor`：仅在有 ref 的行出现，是该提交点主 ref 的色号（与 `colors` 中
+  对应格严格一致），供 Client 给分支名徽章上色，做到「徽章与线条同色」。
 
 ### 3.3 `diff` — 差异
 
@@ -179,13 +190,24 @@ dsh-next-git/
     { "header": "@@ -1,5 +1,7 @@",
       "lines": [
         { "kind": "ctx", "text": "const a = 1", "old": 1, "new": 1 },
-        { "kind": "add", "text": "const b = 2", "new": 2 },
+        { "kind": "add", "text": "const b = 2", "new": 2,
+          "inline": [{ "text": "const b = ", "changed": false }, { "text": "2", "changed": true }] },
         { "kind": "del", "text": "const c = 3", "old": 2 }
       ] }
   ],
   "raw": "<原始 unified diff 全文>"
 }
 ```
+
+**词级差异字段（2026-10 新增，向后兼容——老 Client 忽略即可）**：
+
+- `lines[].inline`：该行文本切成的片段数组，`changed: true` 的片段是真正变化的词。
+  拼接所有 `text` 必须精确等于原 `text`（Host 保证，Client 可安全当作纯展示用）。
+- 只有「同 hunk 内相邻的连续删除块与连续新增块按下标配对」时才附加；
+  多出来的删除行/新增行以及所有 ctx 行没有该字段。
+- 切分规则：标识符/数字/下划线为一类，连续空白一类，单个标点一类；
+  CJK/假名/全角字符**逐字**成段（否则整行会变成一个 token，等于没高亮）。
+- 任一侧为空、或两侧 token 总数超过 400 时退化为整行标记，不附加细粒度片段。
 
 - `worktree` → `git diff --no-color [-U3] -- [path]`
 - `staged` → `git diff --no-color --cached -- [path]`

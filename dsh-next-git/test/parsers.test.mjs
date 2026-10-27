@@ -1,9 +1,13 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
+  GRAPH_PALETTE_SIZE,
   GitError,
+  assignGraphColors,
+  attachInlineHunks,
   cleanGitEnv,
   classifyEntries,
+  diffInline,
   parseBranches,
   parseBranchHeader,
   parseGraph,
@@ -12,6 +16,7 @@ import {
   parseStashes,
   parseTrack,
   parseUnifiedDiff,
+  refColorIndex,
 } from '../src/git.js'
 
 test('cleanGitEnv 去掉损坏的 GIT_CONFIG_* 并固定非交互环境', () => {
@@ -173,7 +178,16 @@ test('parseUnifiedDiff 逐行解析 hunk 并统计增删', () => {
   assert.equal(parsed.hunks.length, 1)
   assert.equal(parsed.hunks[0].header, '@@ -1,3 +1,4 @@ function f() {')
   assert.deepEqual(parsed.hunks[0].lines.map((line) => line.kind), ['ctx', 'del', 'add', 'add', 'ctx'])
-  assert.deepEqual(parsed.hunks[0].lines[1], { kind: 'del', text: 'const b = 2', old: 2 })
+  // 配对的删除/新增行会带上词级片段（inline）；未配对的新增行没有。
+  assert.deepEqual(parsed.hunks[0].lines[1], {
+    kind: 'del',
+    text: 'const b = 2',
+    old: 2,
+    inline: [
+      { text: 'const b = ', changed: false },
+      { text: '2', changed: true },
+    ],
+  })
   assert.deepEqual(parsed.hunks[0].lines[3], { kind: 'add', text: 'const c = 4', new: 3 })
 })
 
@@ -182,4 +196,123 @@ test('GitError 保留 code 与 stderr', () => {
   assert.equal(error.code, 'not-a-repo')
   assert.equal(error.stderr, 'fatal: x')
   assert.equal(error.name, 'GitError')
+})
+
+test('diffInline 只高亮真正变化的词（英文）', () => {
+  const { before, after } = diffInline('const total = price * count', 'const total = price * quantity')
+  assert.deepEqual(before, [
+    { text: 'const total = price * ', changed: false },
+    { text: 'count', changed: true },
+  ])
+  assert.deepEqual(after, [
+    { text: 'const total = price * ', changed: false },
+    { text: 'quantity', changed: true },
+  ])
+})
+
+test('diffInline 对中文按字切分，不会整行高亮', () => {
+  const { before, after } = diffInline('这是旧的中文说明文字', '这是新的中文说明文字')
+  assert.deepEqual(before, [
+    { text: '这是', changed: false },
+    { text: '旧', changed: true },
+    { text: '的中文说明文字', changed: false },
+  ])
+  assert.deepEqual(after, [
+    { text: '这是', changed: false },
+    { text: '新', changed: true },
+    { text: '的中文说明文字', changed: false },
+  ])
+})
+
+test('diffInline 纯增删与超长行退化为整段标记', () => {
+  assert.deepEqual(diffInline('', 'new line'), {
+    before: [{ text: '', changed: false }],
+    after: [{ text: 'new line', changed: true }],
+  })
+  const long = 'x'.repeat(5000)
+  const result = diffInline(long + 'a', long + 'b')
+  assert.equal(result.before.length, 1)
+  assert.equal(result.after.length, 1)
+})
+
+test('attachInlineHunks 按下标配对删除块与新增块', () => {
+  const lines = attachInlineHunks([
+    { kind: 'ctx', text: 'same' },
+    { kind: 'del', text: 'let a = 1' },
+    { kind: 'del', text: 'let b = 2' },
+    { kind: 'add', text: 'let a = 10' },
+    { kind: 'add', text: 'let b = 20' },
+    { kind: 'add', text: 'let c = 30' },
+    { kind: 'ctx', text: 'tail' },
+  ])
+  // 两对配对成功，多出来的新增行保持整行不挂 inline。
+  assert.deepEqual(lines[1].inline, [
+    { text: 'let a = ', changed: false },
+    { text: '1', changed: true },
+  ])
+  assert.deepEqual(lines[3].inline, [
+    { text: 'let a = ', changed: false },
+    { text: '10', changed: true },
+  ])
+  assert.equal(lines[5].inline, undefined)
+  assert.equal(lines[0].inline, undefined)
+})
+
+test('assignGraphColors 保证同屏出现的分支互不同色（哈希碰撞回归）', () => {
+  // 曾经用「名字哈希取模」分配，feat/streaming 与 fix/empty-input 会撞在同一个色号上。
+  const lines = [
+    { graph: '*   ', refs: ['HEAD -> main'] },
+    { graph: '|\\  ', refs: [] },
+    { graph: '| * ', refs: ['fix/empty-input'] },
+    { graph: '* | ', refs: [] },
+    { graph: '| * ', refs: ['feat/streaming'] },
+    { graph: '|/', refs: [] },
+  ]
+  const colors = assignGraphColors(lines, 4)
+  const used = []
+  for (let index = 0; index < lines.length; index += 1) {
+    const dot = lines[index].graph.indexOf('*')
+    if (dot >= 0 && lines[index].refs.length > 0) used.push(colors[index][dot])
+  }
+  assert.equal(used.length, 3)
+  assert.equal(new Set(used).size, 3, '三条分支必须三种颜色')
+})
+
+test('assignGraphColors 让同一条分支线跨行保持同色', () => {
+  const lines = [
+    { graph: '* ', refs: ['HEAD -> main'] },
+    { graph: '|\\', refs: [] },
+    { graph: '| *', refs: ['feat/x'] },
+    { graph: '| *', refs: [] },
+    { graph: '* |', refs: [] },
+    { graph: '|/', refs: [] },
+    { graph: '* ', refs: [] },
+  ]
+  const colors = assignGraphColors(lines, 3)
+  assert.equal(colors.length, lines.length)
+  // 每个格子要么是有效色号要么是 -1（该格无连接）。
+  for (const row of colors) {
+    for (const color of row) assert.ok(color === -1 || (color >= 0 && color < GRAPH_PALETTE_SIZE))
+  }
+  // 第 2、3 行的第二 lane 是同一条分支，必须同色。
+  assert.equal(colors[2][2], colors[3][2])
+  // 第 0 行是 HEAD，独占第一个色号（顺序分配的起点）。
+  assert.equal(colors[0][0], 0)
+})
+
+test('parseGraph 附带 colors 与 refColor，且空输入不炸', () => {
+  // 真实 git log --graph --pretty=format:%H 把图前缀与 40 位 hash 放在同一字段。
+  const shaA = 'a'.repeat(40)
+  const shaB = 'b'.repeat(40)
+  const raw = [
+    `*   ${shaA}\x1faaaaaaa\x1fAnn\x1f1 day ago\x1fHEAD -> main\x1ffirst commit`,
+    `| * ${shaB}\x1fbbbbbbb\x1fBob\x1f2 days ago\x1f\x1fsecond commit`,
+  ].join('\n')
+  const lines = parseGraph(raw)
+  assert.equal(lines.length, 2)
+  assert.ok(Array.isArray(lines[0].colors))
+  // HEAD 所在行分配第一个色号，且 refColor 与线条色号来自同一次分配。
+  assert.equal(lines[0].refColor, lines[0].colors[0])
+  assert.equal(lines[1].refColor, undefined)
+  assert.deepEqual(parseGraph(''), [])
 })

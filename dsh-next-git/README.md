@@ -23,9 +23,14 @@ https://github.com/user-attachments/assets/c57169b4-df00-450d-b4f0-7a2c64db03b6
 - **AI 提交信息**：读取已暂存 diff + 最近提交风格，调用当前默认模型生成一行
   Conventional Commits 提交信息，填入输入框供编辑；模型不可用时降级为
   `chore: 更新 N 个文件`。
-- **提交图（graph）**：`git log --graph --all` 的图形化渲染，可点击任意提交
-  查看该 commit 的 diff。
-- **Diff 查看**：hunk 逐行渲染，带旧/新行号、增删配色、文件头与统计。
+- **彩色提交图（graph）**：`git log --graph --all` 的图形化渲染。每条分支线一种颜色，
+  跨行保持同色；分支名徽章与它自己的线条严格同色，滚到哪都认得出。同一屏出现过的
+  分支保证互不撞色（按首次出现顺序分配，不是对名字取哈希——8 色槽下取模约 1/8 会撞）。
+  可点击任意提交查看该 commit 的 diff。
+- **词级高亮 Diff**：hunk 逐行渲染，带旧/新行号、文件头与统计。真正变化的**词**
+  才有深色底，其余行内文字只是浅底——「改了什么」不用再靠眼力逐字比对。
+  增删配色直接复用平台自己的 `--dsw-alias-file-diff-*` token，深浅主题自动跟随，
+  和 GUI 里的代码块看起来是同一套东西。
 
 面板跟随当前会话的工作目录：切换会话即切换仓库；非 Git 仓库 / 无会话 / 目录被删
 时显示对应空态。右侧栏可以全屏（自带的「全屏」控件），窄列下是单列 tab 布局：
@@ -91,10 +96,12 @@ npm test          # = node --test test/*.test.mjs
 ```
 
 - `test/parsers.test.mjs`：porcelain / 分支头 / for-each-ref / graph / unified diff 解析，
-  以及 `cleanGitEnv` 的 undefined 墓碑（删除继承自父进程的坏 `GIT_CONFIG_*`）。
+  `cleanGitEnv` 的 undefined 墓碑（删除继承自父进程的坏 `GIT_CONFIG_*`），以及
+  `diffInline`（词级切分 + CJK 逐字 + 超长退化）与 `assignGraphColors`
+  （跨行同色、同屏分支不撞色的回归用例）。
 - `test/operations.test.mjs`：12 个 op 的假 exec 单测（含超时、非法参数、非仓库、降级）。
 - `test/ai-commit.test.mjs`：AI 提交信息清理、截断/半句话回退、模型流错误转 `ai-unavailable`、
-  中文仓库的降级文案（单测合计 32 条，全绿）。
+  中文仓库的降级文案（单测合计 39 条，全绿）。
 - `test/integration.test.mjs`：临时真实仓库跑 snapshot → diff → stage → commit →
   graph → 建/切/删分支 → AI 降级；不依赖 dsh 运行时。
 - `test/live/`：真实 Web GUI 的验证清单、smoke 脚本、截图证据与验证报告
@@ -143,6 +150,12 @@ op 一览：`snapshot` `graph` `diff` `stage` `unstage` `switchBranch` `deleteBr
   SVG lane 渲染（20px 行高、最多 10 lane），长历史/多分支下不会挤掉文字。
 - **失败可见**：git 非 0 退出把 stderr 摘要带回 UI，在底部状态条展示；
   只读操作（snapshot/graph/diff）不会阻断面板。
+- **配色跟随宿主**：diff 增删底色与 gutter 用 `--dsw-alias-file-diff-*`，词级高亮
+  用它算出的 34% 透明叠加；两张主题各自的值由平台提供，插件不写死颜色。
+  提交图的 8 色 lane 调色板是本插件自己的 `--gm-lane-*`（平台没有这个 token）。
+- **词级算法在 Host 算、Client 只渲染**：`diffInline` 是纯函数（token LCS），
+  跟解析器一起单测；Client 拿到的 `inline` 片段拼接后必须精确等于原行文本，
+  所以渲染层不需要任何对齐逻辑。
 - **AI 是可选能力**：缺少 `llm` / `agentDefaultModel` 时 `aiCommit` 自动降级，
   不影响提交本身。
 

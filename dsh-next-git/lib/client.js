@@ -277,6 +277,16 @@ window.__ModuleLoader__.load({
         --gm-blue-18: color-mix(in srgb, var(--gm-blue) 18%, transparent);
         --gm-blue-28: color-mix(in srgb, var(--gm-blue) 28%, transparent);
         --gm-blue-40: color-mix(in srgb, var(--gm-blue) 40%, transparent);
+        /* 提交图 lane 调色板：8 色，相邻不撞色；每条分支线跨行保持同色。
+           色相刻意错开（蓝/紫/青/绿/橙/粉/黄/灰），深浅色主题下都够辨识。 */
+        --gm-lane-0: #4d6bfe;
+        --gm-lane-1: #8b5cf6;
+        --gm-lane-2: #06b6d4;
+        --gm-lane-3: #22c55e;
+        --gm-lane-4: #f59e0b;
+        --gm-lane-5: #ec4899;
+        --gm-lane-6: #14b8a6;
+        --gm-lane-7: #a855f7;
         --gm-ok: var(--dsw-alias-state-success-primary);
         --gm-err: var(--dsw-alias-state-error-primary);
         --gm-warn: var(--dsw-alias-state-warn-primary);
@@ -414,10 +424,10 @@ window.__ModuleLoader__.load({
       .gm-glane { flex:none; overflow:hidden;
         -webkit-mask-image:linear-gradient(90deg, #000 88%, transparent 100%);
         mask-image:linear-gradient(90deg, #000 88%, transparent 100%); }
-      .gm-glane line { stroke:var(--gm-blue); stroke-width:1.6; stroke-linecap:round; opacity:.65; }
-      .gm-glane circle { fill:var(--gm-blue); stroke:var(--gm-bg); stroke-width:1.4; }
-      .gm-grow.active .gm-glane line, .gm-grow:hover .gm-glane line { opacity:.95; }
-      .gm-grow.active .gm-glane circle, .gm-grow:hover .gm-glane circle { fill:var(--gm-deep); }
+      .gm-glane line { stroke:var(--gm-blue); stroke-width:1.7; stroke-linecap:round; opacity:.78; }
+      .gm-glane circle { fill:var(--gm-blue); stroke:var(--gm-card); stroke-width:1.5; }
+      .gm-grow.active .gm-glane line, .gm-grow:hover .gm-glane line { opacity:1; }
+      .gm-grow.active .gm-glane circle { stroke:var(--gm-base); stroke-width:2; }
       .gm-hash { flex:none; font-size:10.5px; color:var(--gm-blue); opacity:.75; }
       .gm-subject { flex:1 1 auto; min-width:56px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:inherit; }
       .gm-meta { flex:none; max-width:145px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
@@ -445,15 +455,23 @@ window.__ModuleLoader__.load({
         border:1px solid var(--gm-blue-18); display:inline-block; max-width:calc(100% - 24px);
         font-family:${mono}; font-size:10.5px; color:var(--gm-blue); white-space:pre-wrap; }
       .gm-dlines { font-family:${mono}; font-size:11.5px; line-height:1.62; margin:0 6px 6px; }
-      .gm-dline { display:flex; align-items:baseline; white-space:pre-wrap; word-break:break-all; border-radius:4px; }
-      .gm-dline.add { background:color-mix(in srgb, var(--gm-ok) 10%, transparent); }
-      .gm-dline.del { background:color-mix(in srgb, var(--gm-err) 10%, transparent); }
+      .gm-dline { display:flex; align-items:baseline; white-space:pre-wrap; word-break:break-word; border-radius:4px; }
+      /* 增删底色优先用平台自己的 diff 配色（--dsw-alias-file-diff-*），深浅色主题自动跟随；
+         主题未注入时退回原来的 color-mix 兜底。 */
+      .gm-dline.add { background:var(--dsw-alias-file-diff-added-bg, color-mix(in srgb, var(--gm-ok) 10%, transparent)); }
+      .gm-dline.del { background:var(--dsw-alias-file-diff-deleted-bg, color-mix(in srgb, var(--gm-err) 10%, transparent)); }
       .gm-ln { width:38px; flex:none; text-align:right; padding-right:8px; color:var(--gm-dim);
-        opacity:.6; user-select:none; font-variant-numeric:tabular-nums; }
+        opacity:.6; user-select:none; font-variant-numeric:tabular-nums; border-radius:3px; }
+      .gm-dline.add .gm-ln { background:var(--dsw-alias-file-diff-added-gutter, transparent); }
+      .gm-dline.del .gm-ln { background:var(--dsw-alias-file-diff-deleted-gutter, transparent); }
       .gm-sign { width:14px; flex:none; text-align:center; font-weight:700; }
-      .gm-dline.add .gm-sign { color:var(--gm-ok); }
-      .gm-dline.del .gm-sign { color:var(--gm-err); }
+      .gm-dline.add .gm-sign { color:var(--dsw-alias-file-diff-added-marker, var(--gm-ok)); }
+      .gm-dline.del .gm-sign { color:var(--dsw-alias-file-diff-deleted-marker, var(--gm-err)); }
       .gm-dtext { flex:1 1 auto; min-width:0; padding-right:10px; }
+      /* 词级高亮：只有真正变化的 token 才加深底色，一眼看出「改了哪个词」。 */
+      .gm-dword { border-radius:3px; padding:0 1px; }
+      .gm-dword.add { background:color-mix(in srgb, var(--dsw-alias-file-diff-added-marker, var(--gm-ok)) 34%, transparent); }
+      .gm-dword.del { background:color-mix(in srgb, var(--dsw-alias-file-diff-deleted-marker, var(--gm-err)) 34%, transparent); }
       .gm-meta-line { padding:2px 12px; color:var(--gm-dim); font-style:italic; }
 
       /* ---- commit card --------------------------------------------------- */
@@ -1360,6 +1378,7 @@ window.__ModuleLoader__.load({
                   prev: index > 0 ? (lines[index - 1].graph || '') : '',
                   next: index + 1 < lines.length ? (lines[index + 1].graph || '') : '',
                   cols: graphCols,
+                  colors: line.colors || [],
                 }))
             }
             var selected = state.selected && state.selected.kind === 'commit' && state.selected.hash === line.full
@@ -1374,13 +1393,21 @@ window.__ModuleLoader__.load({
                 prev: index > 0 ? (lines[index - 1].graph || '') : '',
                 next: index + 1 < lines.length ? (lines[index + 1].graph || '') : '',
                 cols: graphCols,
+                colors: line.colors || [],
               }),
               h('span', { className: 'gm-hash' }, line.hash),
               line.refs && line.refs.length > 0
                 ? h('span', { className: 'gm-row', style: { gap: '4px', flex: 'none' } }, line.refs.map(function (ref, refIndex) {
+                  var isHead = ref.indexOf('HEAD') === 0
+                  // HEAD 用渐变主色强调；其余 ref 用分支自己的 lane 色，和左侧线条同色。
                   return h('span', {
                     key: 'r:' + refIndex,
-                    className: 'gm-badge gm-ref' + (ref.indexOf('HEAD') === 0 ? ' brand' : ''),
+                    className: 'gm-badge gm-ref' + (isHead ? ' brand' : ''),
+                    style: isHead ? undefined : {
+                      color: 'var(--gm-lane-' + (line.refColor !== undefined ? line.refColor : 0) + ')',
+                      borderColor: 'color-mix(in srgb, var(--gm-lane-' + (line.refColor !== undefined ? line.refColor : 0) + ') 42%, transparent)',
+                      background: 'color-mix(in srgb, var(--gm-lane-' + (line.refColor !== undefined ? line.refColor : 0) + ') 12%, transparent)',
+                    },
                   }, ref)
                 }))
                 : null,
@@ -1418,6 +1445,12 @@ window.__ModuleLoader__.load({
      * Draws one row of the commit graph as vector lanes, so vertical lines stay
      * continuous across rows (ASCII glyphs leave gaps at 20px row heights).
      */
+    /** lane 色号 → CSS 变量名；-1（该格无连接）返回 undefined 让样式回退。 */
+    function laneVar(color) {
+      if (color === undefined || color === null || color < 0) return undefined
+      return 'var(--gm-lane-' + color + ')'
+    }
+
     function GraphLane(props) {
       var graph = props.graph || ''
       var prev = props.prev || ''
@@ -1425,28 +1458,44 @@ window.__ModuleLoader__.load({
       var cols = props.cols
       var cell = GRAPH_CELL
       var row = GRAPH_ROW
+      var colors = props.colors || []
       var parts = []
       for (var i = 0; i < cols; i += 1) {
         var ch = laneChar(graph, i)
         var cx = (i + 0.5) * cell
+        // 同一条分支线跨行保持同色：颜色由 Host 端 assignGraphColors 沿线段流动算出。
+        var stroke = { stroke: laneVar(colors[i]) }
         if (ch === '|') {
-          parts.push(h('line', { key: 'v' + i, x1: cx, y1: 0, x2: cx, y2: row }))
+          parts.push(h('line', { key: 'v' + i, x1: cx, y1: 0, x2: cx, y2: row, style: stroke }))
         } else if (ch === '/') {
-          parts.push(h('line', { key: 's' + i, x1: cx, y1: 0, x2: cx - cell, y2: row }))
+          parts.push(h('line', { key: 's' + i, x1: cx, y1: 0, x2: cx - cell, y2: row, style: stroke }))
         } else if (ch === '\\') {
-          parts.push(h('line', { key: 'b' + i, x1: cx - cell, y1: 0, x2: cx, y2: row }))
+          parts.push(h('line', { key: 'b' + i, x1: cx - cell, y1: 0, x2: cx, y2: row, style: stroke }))
         } else if (ch === '_') {
-          parts.push(h('line', { key: 'h' + i, x1: cx, y1: row - 1, x2: cx + cell, y2: row - 1 }))
+          parts.push(h('line', { key: 'h' + i, x1: cx, y1: row - 1, x2: cx + cell, y2: row - 1, style: stroke }))
         } else if (ch === '*') {
-          if (laneFromAbove(prev, i)) parts.push(h('line', { key: 'u' + i, x1: cx, y1: 0, x2: cx, y2: row / 2 }))
-          if (laneToBelow(next, i)) parts.push(h('line', { key: 'd' + i, x1: cx, y1: row / 2, x2: cx, y2: row }))
-          parts.push(h('circle', { key: 'c' + i, cx: cx, cy: row / 2, r: 3.2 }))
+          if (laneFromAbove(prev, i)) parts.push(h('line', { key: 'u' + i, x1: cx, y1: 0, x2: cx, y2: row / 2, style: stroke }))
+          if (laneToBelow(next, i)) parts.push(h('line', { key: 'd' + i, x1: cx, y1: row / 2, x2: cx, y2: row, style: stroke }))
+          parts.push(h('circle', { key: 'c' + i, cx: cx, cy: row / 2, r: 3.4,
+            style: { fill: laneVar(colors[i]) } }))
         }
       }
       return h('svg', {
         className: 'gm-glane', width: cols * cell, height: row,
         viewBox: '0 0 ' + (cols * cell) + ' ' + row, 'aria-hidden': 'true',
       }, parts)
+    }
+
+    /**
+     * 渲染一行的文本部分；Host 在解析 diff 时已算好词级片段（line.inline），
+     * 有就只把变化的片段包成 span，没有就退回整段纯文本。
+     */
+    function inlineSpans(line) {
+      if (!line.inline || line.inline.length === 0) return line.text
+      return line.inline.map(function (part, index) {
+        if (!part.changed) return part.text
+        return h('span', { key: 'i:' + index, className: 'gm-dword' + (line.kind === 'del' ? ' del' : ' add') }, part.text)
+      })
     }
 
     function DiffView(props) {
@@ -1480,7 +1529,7 @@ window.__ModuleLoader__.load({
                       h('span', { className: 'gm-ln' }, line.old === undefined ? '' : String(line.old)),
                       h('span', { className: 'gm-ln' }, line.new === undefined ? '' : String(line.new)),
                       h('span', { className: 'gm-sign' }, sign),
-                      h('span', { className: 'gm-dtext' }, line.text))
+                      h('span', { className: 'gm-dtext' }, inlineSpans(line)))
                   })))
               })))
     }
