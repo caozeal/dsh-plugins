@@ -26,6 +26,21 @@ const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replac
 
 function card(c) {
   const src = `${VIDEO_DIR}/${c.file}`;
+  // 成片是在 CI 里用 video/frames 现场合成的；frames 没入库时文件不存在，
+  // 这时不要渲染一个必然 404 的 <video>，而是明确说明去哪拿。
+  const exists = fs.existsSync(path.join(OUT_DIR, src));
+  if (!exists) {
+    return `
+    <section class="card${c.primary ? ' primary' : ''}">
+      <h2>${esc(c.title)}</h2>
+      <p class="note">${esc(c.note)}</p>
+      <p class="missing">
+        本页构建时没有合成视频（<code>video/frames</code> 未入库，需要本地跑
+        <code>video/render.sh</code> 后推送）。上面的 Demo 不受影响，可以直接玩。<br />
+        想看片：<a href="https://github.com/caozeal/dsh-plugins/releases">GitHub Releases</a>。
+      </p>
+    </section>`;
+  }
   return `
     <section class="card${c.primary ? ' primary' : ''}">
       <h2>${esc(c.title)}</h2>
@@ -47,6 +62,12 @@ const DEMO_CSS = `
     }
     .btn:hover { background: #2f49d6; }
     .cta-note { font-size: 13px; color: #8a9099; }
+    .missing {
+      padding: 16px 18px; border-radius: 10px; font-size: 13px; line-height: 1.8;
+      background: rgba(79,124,255,.08); border: 1px dashed rgba(79,124,255,.4);
+      color: var(--dim);
+    }
+    .missing a { color: var(--accent); }
   `;
 
 const html = `<!doctype html>

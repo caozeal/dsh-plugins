@@ -45,6 +45,10 @@ jobs:
         run: node video/pages.mjs "$RUNNER_TEMP/site"
 
       - name: Encode clips from committed frames
+        # 成片 mp4 不进 git（改一版就翻倍），靠仓库里的逐帧 PNG 现场合成。
+        # 但 frames 也是本地产物、没入库，所以这里必须允许「没有 frames」：
+        # 此时只发 Demo 页（demo/ 是自包含的），而不是整站部署失败。
+        if: ${{ hashFiles('video/frames/f00001.png') != '' }}
         run: |
           set -euo pipefail
           FPS=30
@@ -89,6 +93,12 @@ jobs:
             test -f "$RUNNER_TEMP/site/dsh-next-git/demo/$f" || { echo "::error::缺少 demo/$f"; exit 1; }
           done
           test -f "$RUNNER_TEMP/site/dsh-next-git/lib/client.js" || { echo "::error::缺少 lib/client.js"; exit 1; }
+
+      - name: Note missing video frames
+        if: ${{ hashFiles('video/frames/f00001.png') == '' }}
+        run: |
+          echo "::warning::video/frames 不在仓库里，本次不合成宣传片；只发布 Demo 页。"
+          echo "本地跑 video/render.sh 生成 frames 后推送，即可恢复完整站点。"
 
       - uses: actions/upload-pages-artifact@v4
         with:
