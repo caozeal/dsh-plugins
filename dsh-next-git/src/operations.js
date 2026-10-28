@@ -2,9 +2,12 @@
  * git-manager — RPC 操作实现。
  *
  * 每个操作都是一次独立的请求：解析 cwd → 找到仓库根 → 读写 git → 返回纯 JSON。
- * `exec` 由 Host 入口注入（真实子进程或单测的假实现），因此本文件没有 I/O 依赖。
+ * `exec` 由 Host 入口注入（真实子进程或单测的假实现），因此本文件没有 git 之外的 I/O；
+ * 唯一的例外是 applyConflict 要把解决结果写回工作区，那一步用 `writeFile`
+ *（可通过 deps.fileIO 注入假实现，单测不必碰磁盘）。
  */
-import { isAbsolute } from 'node:path'
+import { isAbsolute, join } from 'node:path'
+import { writeFile } from 'node:fs/promises'
 import {
   GitError,
   classifyEntries,
@@ -18,6 +21,7 @@ import {
   parseUnifiedDiff,
 } from './git.js'
 import { generateCommitMessage } from './ai-commit.js'
+import { hasConflictMarkers, resolveConflict } from './ai-conflict.js'
 
 const READ_TIMEOUT = 30000
 const WRITE_TIMEOUT = 30000
@@ -30,6 +34,7 @@ const OPS = [
   'snapshot', 'graph', 'diff', 'stage', 'unstage', 'discard', 'switchBranch', 'deleteBranch',
   'commit', 'fetch', 'pull', 'push', 'aiCommit',
   'stashPush', 'stashPop', 'stashDrop', 'setCommitPrompt',
+  'conflictInfo', 'aiConflict', 'applyConflict', 'takeSide',
 ]
 
 /** 自定义提交提示词在 git config 里的键。用 git config 而不是新增工作区文件：
@@ -67,6 +72,28 @@ function assertPaths(paths) {
   })
 }
 
+/**
+ * 只接受仓库内的相对路径。
+ * applyConflict 会把内容写到 `join(root, path)`，这里必须挡住
+ * 绝对路径与 `..`，否则一个构造过的 path 就能写到仓库外。
+ */
+function assertRelPath(value) {
+  if (typeof value !== 'string' || value.trim() === '' || value.includes('\0')) {
+    throw new GitError('path 非法', { code: 'invalid-params' })
+  }
+  if (isAbsolute(value)) {
+    throw new GitError(`path 必须是仓库内相对路径：${value}`, { code: 'invalid-params' })
+  }
+  const segments = value.split('/').filter((segment) => segment !== '' && segment !== '.')
+  if (segments.includes('..')) {
+    throw new GitError(`path 不能包含 ..：${value}`, { code: 'invalid-params' })
+  }
+  if (segments.length === 0) {
+    throw new GitError('path 非法', { code: 'invalid-params' })
+  }
+  return segments.join('/')
+}
+
 function assertRef(value, label) {
   if (typeof value !== 'string' || value.trim() === '') {
     throw new GitError(`缺少 ${label} 参数`, { code: 'invalid-params' })
@@ -99,6 +126,7 @@ export function createOperations(deps) {
   const { exec } = deps
   const ai = deps.ai ?? (() => null)
   const generate = deps.generateCommitMessage ?? generateCommitMessage
+  const writeFileImpl = (deps.fileIO && deps.fileIO.writeFile) ?? writeFile
   const timeouts = {
     read: READ_TIMEOUT,
     write: WRITE_TIMEOUT,
@@ -538,6 +566,204 @@ export function createOperations(deps) {
     return { prompt: read.code === 0 ? read.stdout.trim() : '' }
   }
 
+  // ---------------------------------------------------------------- 冲突解决
+
+  /** 列出某个冲突文件在索引里的三份 stage（1=base 2=ours 3=theirs）。 */
+  async function conflictStages(root, path, signal) {
+    const res = await runGit(['ls-files', '-u', '-z', '--', path], {
+      cwd: root, signal, allowFailure: true,
+    })
+    const stages = {}
+    for (const chunk of String(res.stdout || '').split('\0')) {
+      if (chunk === '') continue
+      const tab = chunk.indexOf('\t')
+      if (tab < 0) continue
+      // 格式：<mode> <hash> <stage>\t<path>
+      const meta = chunk.slice(0, tab).split(' ')
+      const hash = meta[1]
+      const stage = Number(meta[2])
+      if (!hash || !Number.isInteger(stage) || stage < 1 || stage > 3) continue
+      stages[stage] = hash
+    }
+    return stages
+  }
+
+  async function readBlob(root, hash, signal) {
+    if (!hash) return null
+    const res = await runGit(['cat-file', '-p', hash], { cwd: root, signal, allowFailure: true })
+    return res.code === 0 ? res.stdout : null
+  }
+
+  /** 还剩几个未解决冲突（applyConflict / takeSide 之后用它回执）。 */
+  async function unmergedCount(root, signal) {
+    const res = await runGit(['diff', '--name-only', '--diff-filter=U', '-z'], {
+      cwd: root, signal, allowFailure: true,
+    })
+    return String(res.stdout || '').split('\0').filter(Boolean).length
+  }
+
+  /** 合入侧的 ref 名：merge 看 MERGE_HEAD，rebase 看 REBASE_HEAD。 */
+  async function incomingRef(root, signal) {
+    for (const ref of ['MERGE_HEAD', 'REBASE_HEAD']) {
+      const exists = await runGit(['rev-parse', '--verify', '-q', ref], {
+        cwd: root, signal, allowFailure: true,
+      })
+      if (exists.code !== 0) continue
+      const name = await runGit(['name-rev', '--name-only', ref], {
+        cwd: root, signal, allowFailure: true,
+      })
+      if (name.code === 0 && name.stdout.trim() !== '') return name.stdout.trim()
+      const subject = await runGit(['log', '-1', '--pretty=%s', ref], {
+        cwd: root, signal, allowFailure: true,
+      })
+      if (subject.code === 0 && subject.stdout.trim() !== '') return subject.stdout.trim()
+    }
+    return null
+  }
+
+  /** 读一个冲突文件的三份版本；不是冲突文件就报 invalid-params。 */
+  async function loadConflict(root, path, signal) {
+    const stages = await conflictStages(root, path, signal)
+    if (Object.keys(stages).length === 0) {
+      throw new GitError(`该文件没有未解决的冲突：${path}`, { code: 'invalid-params' })
+    }
+    const [base, ours, theirs] = await Promise.all([
+      readBlob(root, stages[1], signal),
+      readBlob(root, stages[2], signal),
+      readBlob(root, stages[3], signal),
+    ])
+    return { stages, base, ours: ours ?? '', theirs: theirs ?? '' }
+  }
+
+  async function conflictInfo(params, signal) {
+    const cwd = assertCwd(params.cwd)
+    const resolved = await repoRoot(cwd, signal)
+    const root = resolved.root
+    if (!root) {
+      throw new GitError(`当前目录不是 Git 仓库：${cwd}${resolved.error ? `（${resolved.error}）` : ''}`, { code: 'not-a-repo' })
+    }
+    const path = assertRelPath(params.path)
+    const info = await loadConflict(root, path, signal)
+    const branch = await currentBranch(root, signal)
+    const incoming = await incomingRef(root, signal)
+    return {
+      path,
+      branch,
+      incoming,
+      hasBase: info.base !== null,
+      oursExists: Boolean(info.stages[2]),
+      theirsExists: Boolean(info.stages[3]),
+      ours: info.ours.slice(0, DIFF_MAX_CHARS),
+      theirs: info.theirs.slice(0, DIFF_MAX_CHARS),
+      base: (info.base ?? '').slice(0, DIFF_MAX_CHARS),
+    }
+  }
+
+  /**
+   * 生成解决建议。**不写盘** —— 用户确认后走 applyConflict。
+   * 这样模型给出坏结果时最多是白看一次，不会把工作区改脏。
+   */
+  async function aiConflict(params, signal) {
+    const cwd = assertCwd(params.cwd)
+    const resolved = await repoRoot(cwd, signal)
+    const root = resolved.root
+    if (!root) {
+      throw new GitError(`当前目录不是 Git 仓库：${cwd}${resolved.error ? `（${resolved.error}）` : ''}`, { code: 'not-a-repo' })
+    }
+    const path = assertRelPath(params.path)
+    const hint = typeof params.hint === 'string' ? params.hint.slice(0, 500) : ''
+    const info = await loadConflict(root, path, signal)
+    const total = info.ours.length + info.theirs.length + (info.base ? info.base.length : 0)
+    if (total > 240000) {
+      throw new GitError(`冲突文件过大（三份共 ${total} 字符），请手动解决`, { code: 'invalid-params' })
+    }
+    const context = ai() ?? {}
+    const branch = await currentBranch(root, signal)
+    const incoming = await incomingRef(root, signal)
+    const result = await resolveConflict({
+      path,
+      base: info.base,
+      ours: info.ours,
+      theirs: info.theirs,
+      branch,
+      incoming,
+      hint,
+      signal,
+      llm: context.llm,
+      selection: context.selection,
+    })
+    return {
+      path,
+      suggested: result.suggested,
+      model: result.model,
+      hasBase: info.base !== null,
+    }
+  }
+
+  /** 把解决结果写回工作区并标记为已解决。写入前再挡一次冲突标记。 */
+  async function applyConflict(params, signal) {
+    const cwd = assertCwd(params.cwd)
+    const resolved = await repoRoot(cwd, signal)
+    const root = resolved.root
+    if (!root) {
+      throw new GitError(`当前目录不是 Git 仓库：${cwd}${resolved.error ? `（${resolved.error}）` : ''}`, { code: 'not-a-repo' })
+    }
+    const path = assertRelPath(params.path)
+    const content = params.content
+    if (typeof content !== 'string' || content.trim() === '') {
+      throw new GitError('content 不能为空', { code: 'invalid-params' })
+    }
+    if (content.length > DIFF_MAX_CHARS) {
+      throw new GitError(`content 过长（${content.length} 字符）`, { code: 'invalid-params' })
+    }
+    if (hasConflictMarkers(content)) {
+      throw new GitError('解决结果仍包含冲突标记，拒绝写入', { code: 'invalid-params' })
+    }
+    // 必须是当前真实的冲突文件，避免用这个接口去改任意文件
+    await loadConflict(root, path, signal)
+    const abs = join(root, path)
+    if (abs !== root && !abs.startsWith(root + '/')) {
+      throw new GitError('path 超出仓库范围', { code: 'invalid-params' })
+    }
+    await writeFileImpl(abs, content, 'utf8')
+    await runGit(['add', '--', path], { cwd: root, signal, timeoutMs: timeouts.write })
+    const unmerged = await unmergedCount(root, signal)
+    return { path, resolved: true, unmerged }
+  }
+
+  /**
+   * 直接取某一侧（ours / theirs）。
+   * 该侧没有这个文件时（被删除或改名）语义就是「删除」，用 git rm 收掉冲突条目。
+   */
+  async function takeSide(params, signal) {
+    const cwd = assertCwd(params.cwd)
+    const resolved = await repoRoot(cwd, signal)
+    const root = resolved.root
+    if (!root) {
+      throw new GitError(`当前目录不是 Git 仓库：${cwd}${resolved.error ? `（${resolved.error}）` : ''}`, { code: 'not-a-repo' })
+    }
+    const path = assertRelPath(params.path)
+    const side = params.side
+    if (side !== 'ours' && side !== 'theirs') {
+      throw new GitError(`side 只能是 ours 或 theirs：${String(side)}`, { code: 'invalid-params' })
+    }
+    const info = await loadConflict(root, path, signal)
+    const stage = side === 'ours' ? 2 : 3
+    const deleted = !info.stages[stage]
+    if (deleted) {
+      await runGit(['rm', '-f', '--ignore-unmatch', '--', path], {
+        cwd: root, signal, timeoutMs: timeouts.write, allowFailure: true,
+      })
+    } else {
+      await runGit(['checkout', side === 'ours' ? '--ours' : '--theirs', '--', path], {
+        cwd: root, signal, timeoutMs: timeouts.write,
+      })
+      await runGit(['add', '--', path], { cwd: root, signal, timeoutMs: timeouts.write })
+    }
+    const unmerged = await unmergedCount(root, signal)
+    return { path, side, deleted, resolved: true, unmerged }
+  }
+
   async function aiCommit(params, signal) {
     const cwd = assertCwd(params.cwd)
     const resolved = await repoRoot(cwd, signal)
@@ -583,6 +809,10 @@ export function createOperations(deps) {
     stashPop,
     stashDrop,
     setCommitPrompt,
+    conflictInfo,
+    aiConflict,
+    applyConflict,
+    takeSide,
   }
 
   /**
@@ -598,7 +828,7 @@ export function createOperations(deps) {
     if (params === null || typeof params !== 'object') {
       throw new GitError('参数必须是 JSON 对象', { code: 'invalid-params' })
     }
-    const timeout = op === 'aiCommit'
+    const timeout = op === 'aiCommit' || op === 'aiConflict'
       ? timeouts.ai
       : op === 'fetch' || op === 'pull' || op === 'push'
         ? timeouts.network

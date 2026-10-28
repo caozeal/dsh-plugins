@@ -75,7 +75,13 @@
           "oldPath": null
         }
       ],
-      "conflicted": []
+      "conflicted": [
+        {
+          "path": "src/sum.js",
+          "status": "UU",
+          "oldPath": null
+        }
+      ]
     },
     "stashes": [
       {
@@ -757,5 +763,20 @@
       "raw": "diff --git a/README.md b/README.md\nnew file mode 100644\nindex 0000000..099cdaa\n--- /dev/null\n+++ b/README.md\n@@ -0,0 +1,3 @@\n+# whale-notes\n+\n+一个用来演示 Git 面板的小项目。\ndiff --git a/src/parser.js b/src/parser.js\nnew file mode 100644\nindex 0000000..9ac6c57\n--- /dev/null\n+++ b/src/parser.js\n@@ -0,0 +1,7 @@\n+const TOKEN = /[a-z]+/gi\n+\n+function parse(input) {\n+  return String(input).match(TOKEN) || []\n+}\n+\n+module.exports = { parse }\n"
     }
   },
-  "generatedAt": "2026-10-28T03:16:06.809Z"
+  "generatedAt": "2026-10-28T03:16:06.809Z",
+  "conflicts": {
+    "src/sum.js": {
+      "path": "src/sum.js",
+      "branch": "main",
+      "incoming": "feature/sum",
+      "hasBase": true,
+      "oursExists": true,
+      "theirsExists": true,
+      "base": "export function sum(items) {\n  return items.reduce((acc, n) => acc + n, 0)\n}\n",
+      "ours": "export function sum(items) {\n  return items.reduce((acc, n) => acc + n, 0)\n}\n",
+      "theirs": "export function sum(items) {\n  let total = 0\n  for (const n of items) total += n\n  return total\n}\n",
+      "suggested": "export function sum(items) {\n  // 两边实现等价，保留更易读的 reduce 版本\n  return items.reduce((acc, n) => acc + n, 0)\n}\n",
+      "model": "demo/recorded"
+    }
+  }
 }

@@ -26,6 +26,10 @@ https://github.com/user-attachments/assets/c57169b4-df00-450d-b4f0-7a2c64db03b6
   冲突文件不给丢弃——那等于放弃冲突解决状态，容易误伤。
 - **Stash**：分支页底部可直接 stash 当前改动（有未跟踪文件时自动带 `-u`），
   列出全部 stash，一键恢复（pop）或删除（drop）。
+- **AI 解决冲突**：冲突文件点「解决」，AI 读索引里的 base / ours / theirs 三份版本，
+  给出一份合并后的完整文件——**只生成建议，确认后才写盘**；确认时再校验一遍有没有
+  残留 `<<<<<<<` 才 `git add`。机械场景可以直接「取当前分支 / 取对方分支」。
+  冲突文件刻意不提供「暂存」按钮：`git add` 会把带冲突标记的文件直接标记为已解决。
 - **提交 / 推送 / 拉取**：Fetch、Pull、Push 按钮，提交信息输入框，
   支持「提交」「提交并推送」；无 upstream 时自动 `push -u origin <branch>`。
 - **AI 提交信息**：读取已暂存 diff + 最近提交风格，调用当前默认模型生成
@@ -197,5 +201,6 @@ op 一览：`snapshot` `graph` `diff` `stage` `unstage` `switchBranch` `deleteBr
 - 大仓库的 graph 默认取 80 条（上限 300）；diff 超过 400k 字符会截断。
 - 会话的工作目录被删除/不可访问时，面板显示「工作目录不存在或无法访问」空态
   （Host 返回 `cwd-unavailable`），不会展示原始 spawn 错误。
-- 冲突只做展示（conflicted 分组 + 横幅提示），不提供 accept ours/theirs 之类的解决 UI。
+- AI 解决冲突按「单个文件」处理，不提供「一次性解决全部冲突」的批量操作；
+  多个文件仍要逐个确认（这是有意的，批量自动落盘风险太高）。
 - 网络操作超时 180s；无凭据的私有仓库会失败并把 git stderr 显示出来。

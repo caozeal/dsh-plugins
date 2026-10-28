@@ -246,3 +246,73 @@ test('真实仓库：自定义提交提示词写进 git config，清空后回到
   snap = await ops.handle('snapshot', { cwd: dir })
   assert.equal(snap.commitPrompt, '')
 })
+/** 造一个真实的合并冲突仓库：main 与 topic 改同一行。 */
+async function makeConflictRepo(label) {
+  const dir = await mkdtemp(join(tmpdir(), 'dsh-git-conflict-'))
+  await git(dir, 'init', '-b', 'main')
+  await git(dir, 'config', 'user.name', 'T')
+  await git(dir, 'config', 'user.email', 't@example.com')
+  await git(dir, 'config', 'commit.gpgsign', 'false')
+  await writeFile(join(dir, 'a.txt'), 'line1\nbase\nline3\n')
+  await git(dir, 'add', '-A')
+  await git(dir, 'commit', '-m', 'chore: init')
+
+  await git(dir, 'checkout', '-b', 'topic')
+  await writeFile(join(dir, 'a.txt'), 'line1\ntopic-change\nline3\n')
+  await git(dir, 'commit', '-am', 'feat: topic side')
+
+  await git(dir, 'checkout', 'main')
+  await writeFile(join(dir, 'a.txt'), 'line1\nmain-change\nline3\n')
+  await git(dir, 'commit', '-am', 'feat: main side')
+
+  const merge = await realExec(['git', 'merge', 'topic'], { cwd: dir })
+  if (merge.code === 0) throw new Error(label + ': 期望产生冲突，但 merge 成功了')
+  return dir
+}
+
+test('真实仓库：conflictInfo 读出三份版本', async (t) => {
+  const dir = await makeConflictRepo('conflictInfo')
+  t.after(() => rm(dir, { recursive: true, force: true }))
+
+  const ops = createOperations({ exec: realExec, ai: () => null })
+  const info = await ops.handle('conflictInfo', { cwd: dir, path: 'a.txt' })
+  assert.equal(info.hasBase, true)
+  assert.match(info.base, /base/)
+  assert.match(info.ours, /main-change/)
+  assert.match(info.theirs, /topic-change/)
+  assert.equal(info.branch, 'main')
+  assert.ok(info.incoming, '应能识别合入侧 ref')
+})
+
+test('真实仓库：takeSide 取一侧并清掉冲突条目', async (t) => {
+  const dir = await makeConflictRepo('takeSide')
+  t.after(() => rm(dir, { recursive: true, force: true }))
+
+  const ops = createOperations({ exec: realExec, ai: () => null })
+  const data = await ops.handle('takeSide', { cwd: dir, path: 'a.txt', side: 'theirs' })
+  assert.equal(data.deleted, false)
+  assert.equal(data.unmerged, 0)
+  const content = await readFile(join(dir, 'a.txt'), 'utf8')
+  assert.match(content, /topic-change/)
+  assert.ok(!content.includes('<<<<<<<'), '不应残留冲突标记')
+})
+
+test('真实仓库：applyConflict 写回自定义内容并标记已解决', async (t) => {
+  const dir = await makeConflictRepo('applyConflict')
+  t.after(() => rm(dir, { recursive: true, force: true }))
+
+  const ops = createOperations({ exec: realExec, ai: () => null })
+  const merged = 'line1\nmerged-both\nline3\n'
+  const data = await ops.handle('applyConflict', { cwd: dir, path: 'a.txt', content: merged })
+  assert.equal(data.resolved, true)
+  assert.equal(data.unmerged, 0)
+  assert.equal(await readFile(join(dir, 'a.txt'), 'utf8'), merged)
+  const staged = await git(dir, 'diff', '--cached', '--name-only')
+  assert.match(staged, /a\.txt/, '解决后应已进入暂存区')
+
+  // 再调一次：已经不是冲突文件了，必须报错而不是随便改文件
+  await assert.rejects(
+    () => ops.handle('applyConflict', { cwd: dir, path: 'a.txt', content: 'x\n' }),
+    (error) => error.code === 'invalid-params',
+  )
+})

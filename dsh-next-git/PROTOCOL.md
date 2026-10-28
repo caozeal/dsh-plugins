@@ -235,6 +235,10 @@ dsh-next-git/
 | `stashPop` | `{ cwd, index?: number }`（默认 0） | `git stash pop stash@{n}` | `{ output }` |
 | `stashDrop` | `{ cwd, index?: number }` | `git stash drop stash@{n}` | `{ output }` |
 | `setCommitPrompt` | `{ cwd, prompt: string }` | `git config --local dsh.commitPrompt <v>`；空串则 `--unset` | `{ prompt }` |
+| `conflictInfo` | `{ cwd, path }` | `git ls-files -u -z` + `git cat-file -p <blob>` | `{ path, branch, incoming, hasBase, oursExists, theirsExists, base, ours, theirs }` |
+| `aiConflict` | `{ cwd, path, hint? }` | 见 §3.5b | `{ path, suggested, model, hasBase }` |
+| `applyConflict` | `{ cwd, path, content }` | 写文件后 `git add -- <path>` | `{ path, resolved, unmerged }` |
+| `takeSide` | `{ cwd, path, side: 'ours'\|'theirs' }` | `git checkout --ours\|--theirs -- <path>` + `git add`；该侧无此文件时 `git rm -f` | `{ path, side, deleted, resolved, unmerged }` |
 
 `discard` 的三种模式对应变更列表的三个分组：`worktree` 只回退工作区，
 `untracked` 删除未跟踪文件，`all` 连暂存区一起回退。三者都不可恢复，
@@ -245,6 +249,37 @@ Client 必须先确认再调用。冲突文件不提供 discard（语义等于�
 再按仓库覆盖。`prompt` 上限 4000 字符。
 
 写操作失败（非 0 退出）返回 `ok:false`，`error.message` 里带 `stderr` 首 2000 字符。
+
+### 3.4b `aiConflict` / `applyConflict` — AI 解决冲突
+
+冲突文件在索引里有三份 stage：`:1:`（共同祖先）、`:2:`（ours）、`:3:`（theirs）。
+`conflictInfo` 用 `git ls-files -u -z` 拿到 blob hash，再 `git cat-file -p` 读出内容——
+**不从磁盘读文件**，更不用 `git show :2:path`（路径里带 `:` 会解析错）。
+
+`aiConflict` 的装配逻辑：
+
+1. 三份内容各自截断到 40 000 字符，总长超过 240 000 字符直接 `invalid-params`（这个量级
+   已经不是"看懂了再合"，而是碰运气）。
+2. `branch` 来自 `rev-parse --abbrev-ref HEAD`；`incoming` 依次查 `MERGE_HEAD` / `REBASE_HEAD`，
+   用 `git name-rev` 转成人类可读的 ref 名。
+3. 系统提示词要求：保留双方有价值的改动、版本号取更高的一方、只输出文件内容、
+   不要围栏/解释、拿不准时选让文件自洽的一侧而不是拼贴。
+4. **只返回建议，不写盘。** 校验：非空、不含行首 `<<<<<<<` / `>>>>>>>`。
+   不合格抛 `ai-unavailable`（宁可报错也不要用坏结果覆盖用户文件）。
+
+`applyConflict` 是唯一落盘入口：
+
+- `path` 必须是仓库内相对路径，绝对路径和 `..` 一律 `invalid-params`
+  （否则构造过的 path 能写到仓库外）；
+- 内容必须非空、≤ 400 000 字符、且不含冲突标记；
+- 必须**当前确实是冲突文件**（再查一次 `git ls-files -u`），避免被当成通用写文件接口；
+- 写入后 `git add` 标记已解决，再回一次未解决数量。
+
+`takeSide` 用于机械场景（"整份取上游"）。该侧没有这个文件时（删除/改名冲突），
+语义就是删除，用 `git rm -f --ignore-unmatch` 收掉冲突条目，而不是让 `checkout --ours` 报错。
+
+Client 侧：冲突文件**不提供「暂存」按钮**——`git add` 会把带 `<<<<<<<` 的文件直接标记为
+已解决。唯一入口是「解决」，走上述 op。
 
 ### 3.5 `aiCommit`
 

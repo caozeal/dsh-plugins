@@ -189,6 +189,26 @@ function resolveOp(fixtures, body) {
     var diff = fixtures.diffs[key]
     return diff ? ok(diff) : fail('git-failed', '演示数据里没有这份 diff')
   }
+  // 冲突解决：这两个 op 不写盘，所以 Demo 里可以真的走一遍「生成 → 预览」。
+  // 数据来自 fixtures.conflicts（录制快照），applyConflict / takeSide 仍然拒绝。
+  if (op === 'conflictInfo' || op === 'aiConflict') {
+    var record = fixtures.conflicts && fixtures.conflicts[body.path]
+    if (!record) return fail('git-failed', '演示数据里没有这个冲突文件')
+    if (op === 'conflictInfo') {
+      return ok({
+        path: record.path,
+        branch: record.branch,
+        incoming: record.incoming,
+        hasBase: record.hasBase,
+        oursExists: record.oursExists,
+        theirsExists: record.theirsExists,
+        ours: record.ours,
+        theirs: record.theirs,
+        base: record.base
+      })
+    }
+    return ok({ path: record.path, suggested: record.suggested, model: record.model, hasBase: record.hasBase })
+  }
   // 写操作：Demo 里不真的改仓库，明确告知而不是假装成功。
   // 文案要短：这条提示渲染在面板底部那一行状态条里，太长会被截断。
   return fail('demo-readonly', '演示模式为只读快照，写操作请本地安装后体验')

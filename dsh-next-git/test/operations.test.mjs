@@ -371,3 +371,174 @@ test('snapshot：带上仓库自定义提交提示词', async () => {
   const data = await ops.handle('snapshot', { cwd: CWD })
   assert.equal(data.commitPrompt, '用英文写，不要 emoji')
 })
+// ---------------------------------------------------------------- 冲突解决
+
+const CONFLICT_LS = [
+  '100644 aaaa1111 1\ta.txt',
+  '100644 bbbb2222 2\ta.txt',
+  '100644 cccc3333 3\ta.txt',
+  '',
+].join('\u0000')
+
+function conflictRoutes(extra = []) {
+  return [
+    [['rev-parse', '--show-toplevel'], ok(ROOT + '\n')],
+    [['ls-files', '-u', '-z', '--', 'a.txt'], ok(CONFLICT_LS)],
+    [['cat-file', '-p', 'aaaa1111'], ok('base\n')],
+    [['cat-file', '-p', 'bbbb2222'], ok('ours\n')],
+    [['cat-file', '-p', 'cccc3333'], ok('theirs\n')],
+    [['rev-parse', '--abbrev-ref', 'HEAD'], ok('main\n')],
+    ...extra,
+  ]
+}
+
+function fakeIO() {
+  const writes = []
+  return {
+    writes,
+    fileIO: { writeFile: async (path, content) => { writes.push({ path, content }) } },
+  }
+}
+
+test('conflictInfo：读出 base / ours / theirs 三份内容', async () => {
+  const { exec } = makeExec(conflictRoutes())
+  const ops = createOperations({ exec })
+  const data = await ops.handle('conflictInfo', { cwd: CWD, path: 'a.txt' })
+  assert.equal(data.path, 'a.txt')
+  assert.equal(data.branch, 'main')
+  assert.equal(data.ours, 'ours\n')
+  assert.equal(data.theirs, 'theirs\n')
+  assert.equal(data.base, 'base\n')
+  assert.equal(data.hasBase, true)
+  assert.equal(data.oursExists, true)
+})
+
+test('conflictInfo：不是冲突文件时报 invalid-params', async () => {
+  const routes = [
+    [['rev-parse', '--show-toplevel'], ok(ROOT + '\n')],
+    [['ls-files', '-u', '-z', '--', 'a.txt'], ok('')],
+  ]
+  const { exec } = makeExec(routes)
+  const ops = createOperations({ exec })
+  await assert.rejects(
+    () => ops.handle('conflictInfo', { cwd: CWD, path: 'a.txt' }),
+    (error) => error instanceof GitError && error.code === 'invalid-params',
+  )
+})
+
+test('aiConflict：把三份内容交给模型，返回建议但不写盘', async () => {
+  const io = fakeIO()
+  const requests = []
+  const llm = {
+    stream(request) {
+      requests.push(request)
+      return (async function* () {
+        yield { type: 'text-delta', text: 'const x = 1\n' }
+        yield { type: 'finish', reason: { kind: 'stop' } }
+      })()
+    },
+  }
+  const { exec } = makeExec(conflictRoutes())
+  const ops = createOperations({
+    exec,
+    fileIO: io.fileIO,
+    ai: () => ({ llm, selection: { provider: 'p', model: 'm' } }),
+  })
+  const data = await ops.handle('aiConflict', { cwd: CWD, path: 'a.txt', hint: '取上游' })
+  assert.equal(data.suggested, 'const x = 1\n')
+  assert.equal(data.model, 'p/m')
+  assert.equal(io.writes.length, 0, '生成阶段不允许写盘')
+  const prompt = requests[0].messages[0].content[0].text
+  assert.match(prompt, /ours-content|ours/)
+  assert.match(prompt, /取上游/)
+})
+
+test('aiConflict：没有可用模型时 ai-unavailable', async () => {
+  const { exec } = makeExec(conflictRoutes())
+  const ops = createOperations({ exec, ai: () => null })
+  await assert.rejects(
+    () => ops.handle('aiConflict', { cwd: CWD, path: 'a.txt' }),
+    (error) => error instanceof GitError && error.code === 'ai-unavailable',
+  )
+})
+
+test('applyConflict：写入内容并 git add，返回剩余冲突数', async () => {
+  const io = fakeIO()
+  const routes = conflictRoutes([
+    [['add', '--', 'a.txt'], ok('')],
+    [['diff', '--name-only', '--diff-filter=U', '-z'], ok('')],
+  ])
+  const { exec } = makeExec(routes)
+  const ops = createOperations({ exec, fileIO: io.fileIO })
+  const data = await ops.handle('applyConflict', { cwd: CWD, path: 'a.txt', content: 'resolved\n' })
+  assert.equal(data.resolved, true)
+  assert.equal(data.unmerged, 0)
+  assert.equal(io.writes.length, 1)
+  assert.equal(io.writes[0].path, ROOT + '/a.txt')
+  assert.equal(io.writes[0].content, 'resolved\n')
+})
+
+test('applyConflict：拒绝含冲突标记的内容', async () => {
+  const io = fakeIO()
+  const { exec } = makeExec(conflictRoutes())
+  const ops = createOperations({ exec, fileIO: io.fileIO })
+  await assert.rejects(
+    () => ops.handle('applyConflict', { cwd: CWD, path: 'a.txt', content: '<<<<<<< HEAD\nx\n' }),
+    (error) => error instanceof GitError && error.code === 'invalid-params',
+  )
+  assert.equal(io.writes.length, 0)
+})
+
+test('applyConflict：拒绝越出仓库的路径', async () => {
+  const io = fakeIO()
+  const { exec } = makeExec(conflictRoutes())
+  const ops = createOperations({ exec, fileIO: io.fileIO })
+  for (const bad of ['../../etc/passwd', '/etc/passwd']) {
+    await assert.rejects(
+      () => ops.handle('applyConflict', { cwd: CWD, path: bad, content: 'x\n' }),
+      (error) => error instanceof GitError && error.code === 'invalid-params',
+    )
+  }
+  assert.equal(io.writes.length, 0)
+})
+
+test('takeSide：ours 走 checkout --ours 再 add', async () => {
+  const routes = conflictRoutes([
+    [['checkout', '--ours', '--', 'a.txt'], ok('')],
+    [['add', '--', 'a.txt'], ok('')],
+    [['diff', '--name-only', '--diff-filter=U', '-z'], ok('')],
+  ])
+  const { exec, calls } = makeExec(routes)
+  const ops = createOperations({ exec })
+  const data = await ops.handle('takeSide', { cwd: CWD, path: 'a.txt', side: 'ours' })
+  assert.equal(data.deleted, false)
+  assert.equal(data.unmerged, 0)
+  const written = calls.map((call) => call.args.join(' '))
+  assert.ok(written.includes('checkout --ours -- a.txt'))
+  assert.ok(written.includes('add -- a.txt'))
+})
+
+test('takeSide：该侧没有这个文件时用 git rm 收掉冲突', async () => {
+  const onlyTheirs = ['100644 cccc3333 3\ta.txt', ''].join('\u0000')
+  const routes = [
+    [['rev-parse', '--show-toplevel'], ok(ROOT + '\n')],
+    [['ls-files', '-u', '-z', '--', 'a.txt'], ok(onlyTheirs)],
+    [['cat-file', '-p', 'cccc3333'], ok('theirs\n')],
+    [['rm', '-f', '--ignore-unmatch', '--', 'a.txt'], ok('')],
+    [['diff', '--name-only', '--diff-filter=U', '-z'], ok('')],
+  ]
+  const { exec, calls } = makeExec(routes)
+  const ops = createOperations({ exec })
+  const data = await ops.handle('takeSide', { cwd: CWD, path: 'a.txt', side: 'ours' })
+  assert.equal(data.deleted, true)
+  assert.ok(calls.map((c) => c.args.join(' ')).includes('rm -f --ignore-unmatch -- a.txt'))
+})
+
+test('takeSide：side 只能是 ours / theirs', async () => {
+  const { exec } = makeExec(conflictRoutes())
+  const ops = createOperations({ exec })
+  await assert.rejects(
+    () => ops.handle('takeSide', { cwd: CWD, path: 'a.txt', side: 'both' }),
+    (error) => error instanceof GitError && error.code === 'invalid-params',
+  )
+})

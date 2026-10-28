@@ -490,6 +490,61 @@ async function main() {
       return '读写一致'
     })
 
+    // ── 3.5 冲突解决（另一个 disposable 仓库，避免污染上面的工作区）──
+    console.log('\n[3.5] 冲突解决（真实 merge 冲突）')
+    const conflictRepo = await mkdtemp(join(tmpdir(), 'gm-smoke-conflict-'))
+    created.push(conflictRepo)
+    gitOk(['init', '-q', '-b', 'main'], conflictRepo)
+    gitOk(['config', 'user.name', 'git-manager smoke'], conflictRepo)
+    gitOk(['config', 'user.email', 'smoke@example.invalid'], conflictRepo)
+    await writeFile(join(conflictRepo, 'a.txt'), 'one\nbase-a\nthree\n')
+    await writeFile(join(conflictRepo, 'b.txt'), 'one\nbase-b\nthree\n')
+    gitOk(['add', '-A'], conflictRepo)
+    gitOk(['commit', '-q', '-m', 'chore: init'], conflictRepo)
+    gitOk(['checkout', '-q', '-b', 'topic'], conflictRepo)
+    await writeFile(join(conflictRepo, 'a.txt'), 'one\ntopic-a\nthree\n')
+    await writeFile(join(conflictRepo, 'b.txt'), 'one\ntopic-b\nthree\n')
+    gitOk(['commit', '-q', '-am', 'feat: topic'], conflictRepo)
+    gitOk(['checkout', '-q', 'main'], conflictRepo)
+    await writeFile(join(conflictRepo, 'a.txt'), 'one\nmain-a\nthree\n')
+    await writeFile(join(conflictRepo, 'b.txt'), 'one\nmain-b\nthree\n')
+    gitOk(['commit', '-q', '-am', 'feat: main'], conflictRepo)
+    const mergeRun = spawnSync('git', ['merge', 'topic'], { cwd: conflictRepo, env: cleanGitEnv(), encoding: 'utf8' })
+    if (mergeRun.status === 0) throw new Error('前置条件失败：merge 没有产生冲突')
+
+    await check('conflictInfo → 读出 base / ours / theirs', async () => {
+      const data = await rpcOk('conflictInfo', { path: 'a.txt' }, conflictRepo)
+      assert(data.hasBase === true, 'hasBase 应为 true')
+      assert(/base-a/.test(data.base), 'base 内容不含 base-a')
+      assert(/main-a/.test(data.ours), 'ours 内容不含 main-a')
+      assert(/topic-a/.test(data.theirs), 'theirs 内容不含 topic-a')
+      return 'base/ours/theirs 齐全'
+    })
+    await check('applyConflict → 写回内容并清掉冲突条目', async () => {
+      const content = 'one\nmerged-a\nthree\n'
+      const data = await rpcOk('applyConflict', { path: 'a.txt', content }, conflictRepo)
+      assert(data.resolved === true, 'resolved 应为 true')
+      assert(data.unmerged === 1, `unmerged=${data.unmerged}，应只剩 b.txt`)
+      const actual = await readFile(join(conflictRepo, 'a.txt'), 'utf8')
+      assert(actual === content, `写回内容不符：${JSON.stringify(actual)}`)
+      const staged = gitOk(['diff', '--cached', '--name-only'], conflictRepo)
+      assert(staged.includes('a.txt'), 'a.txt 没有进暂存区')
+      return 'a.txt 已解决'
+    })
+    await check('applyConflict 含冲突标记 → invalid-params', async () => {
+      const { error } = await rpcErr('applyConflict', { path: 'b.txt', content: '<<<<<<< HEAD\nx\n' }, conflictRepo)
+      assert(error?.code === 'invalid-params', `error.code=${JSON.stringify(error?.code)}`)
+      return 'code=invalid-params'
+    })
+    await check('takeSide theirs → 取对方版本并清空冲突', async () => {
+      const data = await rpcOk('takeSide', { path: 'b.txt', side: 'theirs' }, conflictRepo)
+      assert(data.unmerged === 0, `unmerged=${data.unmerged}`)
+      const actual = await readFile(join(conflictRepo, 'b.txt'), 'utf8')
+      assert(/topic-b/.test(actual), 'b.txt 不是对方版本')
+      assert(!actual.includes('<<<<<<<'), 'b.txt 仍残留冲突标记')
+      return 'b.txt 已取 theirs'
+    })
+
     // ── 4. 网络 op：失败时错误可见（scratch 仓库没有 remote）────────────
     console.log('\n[4] 网络 op 失败时错误可读（无 remote 的仓库）')
     await check('pull 无 upstream → ok:false + 可读 message', async () => {
