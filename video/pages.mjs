@@ -121,7 +121,7 @@ const html = `<!doctype html>
         <code>dsh plugin --profile web add @caozeal/dsh-next-git</code>
       </p>
       <p class="cta">
-        <a class="btn" href="./dsh-next-git/demo/">打开在线 Demo →</a>
+        <a class="btn" href="./demo/">打开在线 Demo →</a>
         <span class="cta-note">真实面板代码 + 真实仓库快照，可以直接点</span>
       </p>
     </header>
@@ -142,13 +142,20 @@ fs.writeFileSync(path.join(OUT_DIR, 'index.html'), html);
 // Demo 按 ../lib/client.js 引用真实插件代码，所以要保持 dsh-next-git/{demo,lib} 的
 // 相对层级。放在这里而不是只写在 CI 里，是为了「本地生成 → 手工上传 Cloudflare」
 // 这条既有发布路径也能一并带上 Demo，不必记两套命令。
+// 站点根会被挂在某个子路径下（如 dsh.caozeal.cn/next-git/），
+// 所以 Demo 直接放站点根：/next-git/demo/ 读 ../lib/client.js → /next-git/lib/client.js。
 const DEMO_SRC = 'dsh-next-git/demo';
 const CLIENT_SRC = 'dsh-next-git/lib/client.js';
-const DEMO_DEST = path.join(OUT_DIR, 'dsh-next-git', 'demo');
-const LIB_DEST = path.join(OUT_DIR, 'dsh-next-git', 'lib');
+const DEMO_DEST = path.join(OUT_DIR, 'demo');
+const LIB_DEST = path.join(OUT_DIR, 'lib');
 
 if (fs.existsSync(DEMO_SRC) && fs.existsSync(CLIENT_SRC)) {
-  fs.cpSync(DEMO_SRC, DEMO_DEST, { recursive: true });
+  fs.mkdirSync(DEMO_DEST, { recursive: true });
+  // 只带运行 Demo 需要的四个文件；gen-fixtures.mjs / check.mjs / README.md
+  // 是开发期工具，没必要出现在线上站点里。
+  for (const name of ['index.html', 'host-shim.js', 'boot.js', 'fixtures.json']) {
+    fs.copyFileSync(path.join(DEMO_SRC, name), path.join(DEMO_DEST, name));
+  }
   fs.mkdirSync(LIB_DEST, { recursive: true });
   fs.copyFileSync(CLIENT_SRC, path.join(LIB_DEST, 'client.js'));
   console.log(`bundled demo -> ${DEMO_DEST}`);

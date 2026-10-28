@@ -1,6 +1,8 @@
 # 依赖与构建产物
 node_modules/
 dist/
+# 生成出来的站点（node video/pages.mjs 的产物，含 demo 与 lib 拷贝）
+video/site/
 
 # git-manager 的 client bundle 是手写源码（无构建步骤），lib/ 需要入库，故不忽略 lib/
 

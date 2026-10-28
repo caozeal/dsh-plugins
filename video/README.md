@@ -19,10 +19,43 @@
 ACE-Step 那条见 [`audio/acestep/README.md`](audio/acestep/README.md)（含 4 个候选的试听
 文件与生成/配速命令）。
 
-### 在线播放页
+### 在线站点（播放页 + 在线 Demo）
 
-成片已发布到 Cloudflare：**<https://dsh-next-git.1017835747.workers.dev/>**（`video/pages.mjs`
-生成播放页，站点内容是 `index.html` + 封面 + 成片 mp4，不依赖仓库里的渲染器）。
+目标地址：**<https://dsh.caozeal.cn/next-git/>**，Demo 在 `/next-git/demo/`。
+
+站点由 `video/pages.mjs` 一次生成，内容 = 播放页 + 在线 Demo + 插件真实 client.js：
+
+```bash
+node video/pages.mjs video/site
+npx wrangler deploy --config video/wrangler.toml
+```
+
+产物结构（`video/site/`，已 gitignore）：
+
+```
+index.html        播放页
+demo/             在线 Demo（index.html + host-shim.js + boot.js + fixtures.json）
+lib/client.js     插件真实前端代码，demo 按 ../lib/client.js 引用
+poster.png        封面
+```
+
+为什么用 Worker 的 route 而不是 Cloudflare Pages：Pages 项目占据的是**主机名根**，
+没法只挂 `/next-git` 这种子路径；Worker route 可以精确匹配
+`dsh.caozeal.cn/next-git/*`，`video/worker.js` 负责把该前缀剥掉后交给静态资源。
+
+前置条件：`dsh.caozeal.cn` 在 Cloudflare 里有一条 **proxied（橙色云）** 的 DNS 记录，
+且 zone `caozeal.cn` 托管在 Cloudflare（NS: `elly.ns.cloudflare.com`）。
+
+本地联调（不需要登录）：
+
+```bash
+node video/pages.mjs video/site
+npx wrangler dev --config video/wrangler.toml --port 8787
+# 打开 http://127.0.0.1:8787/next-git/ 与 /next-git/demo/
+```
+
+旧地址 **<https://dsh-next-git.1017835747.workers.dev/>** 仍在，内容是早前手工上传的
+播放页（不含 Demo），保留作备用。
 
 - 站点手工上传，**改片后要重新生成站点并重传**：
   `node video/pages.mjs /tmp/cf-site`，再把 `video/out/*.mp4` 放进 `/tmp/cf-site/video/out/`

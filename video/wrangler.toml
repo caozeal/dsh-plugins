@@ -1,0 +1,24 @@
+# 把生成的站点发布到 https://dsh.caozeal.cn/next-git/
+#
+# 用法：
+#   node video/pages.mjs video/site      # 生成站点（含 demo/ 与 lib/）
+#   npx wrangler deploy --config video/wrangler.toml
+#
+# 前置：dsh.caozeal.cn 需在 Cloudflare 里有一条 proxied（橙色云）的 DNS 记录，
+# zone caozeal.cn 已托管在 Cloudflare（NS: elly.ns.cloudflare.com）。
+
+name = "dsh-next-git-site"
+main = "worker.js"
+compatibility_date = "2026-10-28"
+
+# 静态资源；run_worker_first 必须为 true，否则已存在的资源会被直出、
+# 绕过 Worker，/next-git 前缀就剥不掉。
+[assets]
+directory = "./site"
+binding = "ASSETS"
+run_worker_first = true
+
+# 只接管这个子路径，域名下其它路径不受影响。
+[[routes]]
+pattern = "dsh.caozeal.cn/next-git/*"
+zone_name = "caozeal.cn"
