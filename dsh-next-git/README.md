@@ -4,11 +4,11 @@
 >
 > 原名 `dsh-plugin-git-manager`，2026-10 起包名改为 `@caozeal/dsh-next-git`（目录仍为 `dsh-next-git/`，功能不变）。
 
-## 38 秒介绍片
+## 41 秒介绍片
 
 https://github.com/user-attachments/assets/c57169b4-df00-450d-b4f0-7a2c64db03b6
 
-*全片界面为渲染示意，不含真实会话；[完整播放页](https://dsh-next-git.1017835747.workers.dev/) 另有下载版。*
+*全片界面为渲染示意，不含真实会话；[完整播放页](https://dsh.caozeal.cn/next-git/) 另有下载版。*
 
 **不想先装再看？** [在线 Demo](https://dsh.caozeal.cn/next-git/demo/) 可以直接点——
 它加载的是发布包里同一份 `lib/client.js`，只补了一个最小假宿主和一份真实仓库的录制快照

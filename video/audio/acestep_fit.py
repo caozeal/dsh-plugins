@@ -10,11 +10,13 @@ to the film length with fade-in/out and loudness-normalised to -15 LUFS.
 Usage: python3 acestep_fit.py <source.flac> <out.wav>
 """
 import json
+import os
 import subprocess
 import sys
 
 TEMPO_RATIO = (60 / 110 * 4) / 2.5     # 0.872727...  -> bars land on 2.5 s
-TOTAL = 37.8
+# 片长跟着时间轴走：加/减场景后不用再手改这里。
+TOTAL = float(os.environ.get('FILM_SECONDS', '37.8'))
 TARGET_I = -15.0
 TARGET_TP = -2.5   # + margin: a single loudnorm pass overshoots after AAC
 IN_FADE = 0.9

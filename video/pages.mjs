@@ -17,7 +17,7 @@ const CLIPS = [
   {
     file: 'dsh-next-git-promo-mockup.mp4',
     title: 'dsh-next-git 介绍片',
-    note: '38 秒 · 1080p60 · 全片为渲染的界面示意，不含真实会话',
+    note: '41 秒 · 1080p60 · 全片为渲染的界面示意，不含真实会话',
     primary: true,
   },
   {
@@ -33,7 +33,8 @@ function card(c) {
   const src = `${VIDEO_DIR}/${c.file}`;
   // 成片是在 CI 里用 video/frames 现场合成的；frames 没入库时文件不存在，
   // 这时不要渲染一个必然 404 的 <video>，而是明确说明去哪拿。
-  const exists = fs.existsSync(path.join(ROOT_DIR, src));
+  // 查源目录，不是输出目录 —— 成片在 video/out/，会在下面被拷进站点。
+  const exists = fs.existsSync(path.join(VIDEO_DIR, c.file));
   if (!exists) {
     return `
     <section class="card${c.primary ? ' primary' : ''}">
@@ -142,6 +143,19 @@ const html = `<!doctype html>
 
 fs.mkdirSync(ROOT_DIR, { recursive: true });
 fs.writeFileSync(path.join(ROOT_DIR, 'index.html'), html);
+
+// 把成片拷进站点：index.html 按 video/out/<file> 引用，所以这里保持同样的相对路径。
+// 之前只引用不拷贝，导致播放页永远判定「文件缺失」，只能显示一句去 Releases 看的提示。
+const VIDEO_DEST = path.join(ROOT_DIR, 'video', 'out');
+let copied = 0;
+for (const c of CLIPS) {
+  const from = path.join(VIDEO_DIR, c.file);
+  if (!fs.existsSync(from)) continue;
+  fs.mkdirSync(VIDEO_DEST, { recursive: true });
+  fs.copyFileSync(from, path.join(VIDEO_DEST, c.file));
+  copied += 1;
+}
+console.log(`copied ${copied} video clip(s) -> ${VIDEO_DEST}`);
 
 // 把在线 Demo 一起打进站点。
 // Demo 按 ../lib/client.js 引用真实插件代码，所以要保持 dsh-next-git/{demo,lib} 的

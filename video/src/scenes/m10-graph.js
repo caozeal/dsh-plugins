@@ -73,7 +73,7 @@ export function Scene() {
           提交历史，<br /><span>看成一棵树</span>
         </h2>
         <p style={pop({ at: 0.3, dur: 0.8 })}>
-          <span style={{ color: '#dbe8ff' }}>git log --graph --all</span> 的图形化渲染：SVG lane、分支标签、相对时间，点任意提交直接看那次 diff。
+          <span style={{ color: '#dbe8ff' }}>git log --graph --all</span> 的图形化渲染：<strong style={{ color: '#fff' }}>每条分支线一种颜色</strong>，跨行不换色，分支徽章与它自己的线严格同色。
         </p>
         <div class="m10-meta">
           <span class="m10-pill" style={pop({ at: 0.52, dur: 0.6 })}>最多 10 条 lane</span>

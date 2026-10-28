@@ -20,7 +20,11 @@ ${MOCK_CSS}
   box-shadow: 0 40px 100px rgba(2,10,34,.62); backdrop-filter: blur(8px); }
 .m8-hint { display:flex; align-items:center; gap: 8px; padding: 15px 18px; font-size: 17px; color:#93aacd; border-bottom:1px solid rgba(120,160,255,.16); }
 .m8-hint b { color:#8fd0ff; }
-.m8-ta { padding: 22px 20px 26px; font: 500 25px "SF Mono","Maple Mono NF CN",Menlo,monospace; color:#eaf2ff; min-height: 92px; }
+.m8-ta { padding: 22px 20px 24px; font: 500 25px "SF Mono","Maple Mono NF CN",Menlo,monospace; color:#eaf2ff; min-height: 150px; }
+.m8-title { white-space: nowrap; }
+.m8-body { margin-top: 16px; font: 400 19px "PingFang SC","Hiragino Sans GB",sans-serif; color:#a9c2e6; line-height: 1.65;
+  padding-left: 2px; border-left: 3px solid rgba(120,160,255,.35); }
+.m8-body b { color:#dbe8ff; font-weight: 600; }
 .m8-caret { display:inline-block; width: 2px; height: 26px; background:#8fd0ff; vertical-align: -5px; animation: blink 1s steps(2) infinite; }
 @keyframes blink { 50% { opacity: 0 } }
 .m8-bar { display:flex; align-items:center; gap: 10px; padding: 13px 18px; background: rgba(8,18,42,.6); border-top:1px solid rgba(120,160,255,.16); }
@@ -43,7 +47,8 @@ export const MEDIA_CSS = `
 }
 `;
 
-const MSG = 'feat(diff): 支持 hunk 逐行高亮与行号并列';
+const MSG = 'feat(commit): 标题与正文一起生成';
+const BODY = '正文写清动机与影响面；改动很小时只留标题，不硬凑。';
 
 export function Scene() {
   const chars = Array.from(MSG).length;
@@ -59,7 +64,7 @@ export function Scene() {
           提交信息，<br /><span>交给 AI 写</span>
         </h2>
         <p style={pop({ at: 0.3, dur: 0.8 })}>
-          读取已暂存 diff 与仓库最近的提交风格，生成一行符合 Conventional Commits 的 subject，填进输入框等你确认。
+          读取已暂存 diff 与仓库最近的提交风格，生成 Conventional Commits 的<strong style={{ color: '#fff' }}>标题 + 可选正文</strong>，填进输入框等你确认。
         </p>
         <div class="m8-flow">
           <span class="m8-step" style={pop({ at: 0.5, dur: 0.6 })}>已暂存 diff</span>
@@ -74,12 +79,16 @@ export function Scene() {
         <div class="m8-ai" style={pop({ at: 0.25, dur: 0.9, from: 'translateY(46px) scale(.96)' })}>
           <div class="m8-hint"><b>✦</b> AI 已根据 3 个已暂存文件生成</div>
           <div class="m8-ta">
-            <span class="typing" style={{ '--len': `${chars}ch`, animation: `typeIn ${dur}s steps(${chars}, end) ${delay}s both` }}>{MSG}</span>
-            <span class="m8-caret" />
+            <div class="m8-title">
+              <span class="typing" style={{ '--len': `${chars}ch`, animation: `typeIn ${dur}s steps(${chars}, end) ${delay}s both` }}>{MSG}</span>
+              <span class="m8-caret" />
+            </div>
+            <div class="m8-body" style={pop({ at: 2.15, dur: 0.8 })}>{BODY}</div>
           </div>
           <div class="m8-bar">
             <span class="m8-chip">Conventional Commits</span>
-            <span class="m8-chip">防截断校验</span>
+            <span class="m8-chip">标题 + 正文</span>
+            <span class="m8-chip">自定义提示词</span>
             <span class="m8-spacer" />
             <span class="m8-btn">⌘↵ 提交</span>
           </div>

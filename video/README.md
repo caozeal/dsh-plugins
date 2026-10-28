@@ -1,6 +1,6 @@
 # dsh-next-git 宣传片（video/）
 
-给 [`@caozeal/dsh-next-git`](../dsh-next-git/README.md) 做的 38 秒产品宣传片：H.264 / 1920×1080 / 60fps，
+给 [`@caozeal/dsh-next-git`](../dsh-next-git/README.md) 做的 41 秒产品宣传片：H.264 / 1920×1080 / 60fps，
 带配乐与音效（AAC 192k）。
 
 **「纯 mockup」版（可公开发布）**：`out/dsh-next-git-promo-mockup.mp4` —— 全片 UI 都是运行时
@@ -70,7 +70,7 @@ npx wrangler dev --config video/wrangler.toml --port 8787
 - 站点手工上传，**改片后要重新生成站点并重传**：
   `node video/pages.mjs /tmp/cf-site`，再把 `video/out/*.mp4` 放进 `/tmp/cf-site/video/out/`
 - 已知限制：Cloudflare 静态托管**不响应 Range 请求**（实测 Workers 与 Pages 都是整包返回），
-  所以拖动进度条会从头下载；38 秒片子影响有限
+  所以拖动进度条会从头下载；41 秒片子影响有限
 - GitHub Release `v0.1.4` 的附件保留了同一份 mp4，可作为下载备份
 
 `out/`、`audio/*.wav`、`audio/acestep/*.flac` 都在 `.gitignore` 里（都能本地重新生成，

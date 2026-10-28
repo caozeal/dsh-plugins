@@ -18,7 +18,7 @@ import os
 import sys
 
 SR = 48000
-TOTAL = 37.8
+TOTAL = float(os.environ.get('FILM_SECONDS', '37.8'))
 BPM = 96.0
 BEAT = 60.0 / BPM          # 0.625 s
 BAR = BEAT * 4             # 2.5 s

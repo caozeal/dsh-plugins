@@ -92,6 +92,10 @@ export const PANEL_CSS = `
 .gm-line.add .tx { color:#166534; }
 .gm-line.del { background:#fdecec; }
 .gm-line.del .tx { color:#991b1b; }
+/* 词级高亮：整行是浅底，只有变化的词加深，和真实面板的 token 配色一致 */
+.gm-line .wd { background: transparent; color: inherit; font-weight: 700; border-radius: 3px; padding: 0 1px; }
+.gm-line.add .wd { background: rgba(22,163,74,.26); box-shadow: 0 0 0 1px rgba(22,163,74,.18); }
+.gm-line.del .wd { background: rgba(220,38,38,.22); box-shadow: 0 0 0 1px rgba(220,38,38,.16); }
 
 /* graph */
 .gm-graph { display:flex; gap:8px; padding: 2px 8px 2px 2px; font-size:12px; align-items:center; border-radius:8px; }
@@ -303,14 +307,16 @@ export function ChangeList({ files = CHANGE_FILES } = {}) {
   );
 }
 
+/** 一行 diff 由若干片段组成；hl=true 的片段是真正变化的词，画深底。 */
+const S = (t, hl) => ({ t, hl: !!hl });
+
 const DIFF_LINES = [
-  { o: 114, n: 114, t: 'ctx', x: 'export function stage(params) {' },
-  { o: 115, n: 115, t: 'ctx', x: '  assertRepo(params.cwd);' },
-  { t: 'del', o: 116, x: '  return runGit(["add", "-A"], cwd);' },
-  { t: 'add', n: 116, x: '  const files = params.files ?? null;' },
-  { t: 'add', n: 117, x: '  // 单文件或整批暂存都走同一条路径' },
-  { t: 'add', n: 118, x: '  return runGit(files ? ["add", "--", ...files] : ["add", "-A"], cwd);' },
-  { o: 117, n: 119, t: 'ctx', x: '}' },
+  { o: 114, n: 114, t: 'ctx', x: [S('export function stage(params) {')] },
+  { o: 115, n: 115, t: 'ctx', x: [S('  assertRepo(params.cwd);')] },
+  { t: 'del', o: 116, x: [S('  return runGit('), S('["add", "-A"]', true), S(', cwd);')] },
+  { t: 'add', n: 116, x: [S('  return runGit('), S('["add", "--", ...files]', true), S(', cwd);')] },
+  { t: 'add', n: 117, x: [S('  // '), S('单文件'), S(' 与 '), S('整批'), S(' 共用同一条路径')] },
+  { o: 117, n: 118, t: 'ctx', x: [S('}')] },
 ];
 
 export function DiffView({ file = 'src/operations.js', add = 12, del = 3 } = {}) {
@@ -321,30 +327,41 @@ export function DiffView({ file = 'src/operations.js', add = 12, del = 3 } = {})
       {DIFF_LINES.map((l) => (
         <div class={`gm-line ${l.t === 'add' ? 'add' : l.t === 'del' ? 'del' : ''}`}>
           <span class="no">{l.o ?? ''}</span><span class="no">{l.n ?? ''}</span>
-          <span class="tx">{l.t === 'add' ? '+' : l.t === 'del' ? '-' : ' '}{l.x}</span>
+          <span class="tx">{l.t === 'add' ? '+' : l.t === 'del' ? '-' : ' '}
+            {l.x.map((seg) => (seg.hl ? <mark class="wd">{seg.t}</mark> : seg.t))}</span>
         </div>
       ))}
     </div>
   );
 }
 
+// 每条分支线一种颜色，跨行保持同色 —— 和真实面板的 assignGraphColors 一个思路。
+const LANE_COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#a855f7'];
+
 const GRAPH_ROWS = [
-  ['a41c9e7', [['HEAD → main', 'head'], ['origin/main', 'remote']], 'feat(ai-commit): 用默认模型生成 Conventional 提交信息', '2 分钟前'],
-  ['5d4e1b2', [], 'feat(graph): SVG lane 渲染，长历史不挤文字', '12 分钟前'],
-  ['e77a03c', [['feature/panel', 'dev']], 'feat(panel): 右侧栏 tab + 会话头部入口', '40 分钟前'],
-  ['9b2f5d1', [], 'style: DeepSeek 蓝 + 胖鲸鱼视觉与动效', '1 小时前'],
-  ['2c8d64a', [], 'fix: cleanGitEnv 用 undefined 墓碑删坏 GIT_CONFIG', '3 小时前'],
-  ['b91e7f5', [], 'test: 32 条单测 + 临时真实仓库集成测试', '昨天'],
+  ['a41c9e7', [['HEAD → main', 'head'], ['origin/main', 'remote']], 'feat(ai-commit): 用默认模型生成 Conventional 提交信息', '2 分钟前', 0],
+  ['5d4e1b2', [], 'feat(graph): 每条分支线一种颜色，跨行不换色', '12 分钟前', 0],
+  ['e77a03c', [['feature/panel', 'dev']], 'feat(panel): 右侧栏 tab + 会话头部入口', '40 分钟前', 1],
+  ['9b2f5d1', [], 'style: DeepSeek 蓝 + 胖鲸鱼视觉与动效', '1 小时前', 1],
+  ['2c8d64a', [['fix/clean-env', 'fix']], 'fix: cleanGitEnv 用 undefined 墓碑删坏 GIT_CONFIG', '3 小时前', 2],
+  ['b91e7f5', [], 'test: 32 条单测 + 临时真实仓库集成测试', '昨天', 0],
 ];
 
 function LaneSvg({ rows = GRAPH_ROWS.length }) {
   const h = rows * 27;
+  const y = (i) => 13.5 + i * 27;
   const parts = [];
-  parts.push(<path d={`M9,10 L9,${h - 14}`} stroke="#3b82f6" stroke-width="2.2" fill="none" opacity=".8" />);
-  parts.push(<path d={`M9,${13.5 + 2 * 27 - 6} C9,${13.5 + 2 * 27 + 8} 24,${13.5 + 2 * 27 - 4} 24,${13.5 + 2 * 27 + 14} L24,${13.5 + 4 * 27 - 6} C24,${13.5 + 4 * 27 + 10} 9,${13.5 + 4 * 27 + 6} 9,${13.5 + 5 * 27 - 4}`} stroke="#22c55e" stroke-width="2.2" fill="none" opacity=".85" />);
+  // 主干：贯穿全图
+  parts.push(<path d={`M9,${y(0)} L9,${h - 8}`} stroke={LANE_COLORS[0]} stroke-width="2.2" fill="none" opacity=".9" />);
+  // feature/panel：从第 3 行岔出，第 5 行并回主干
+  parts.push(<path d={`M9,${y(2)} C9,${y(2) + 10} 24,${y(2) - 2} 24,${y(2) + 12} L24,${y(3) + 6} C24,${y(4) + 10} 9,${y(4) - 4} 9,${y(4) + 10}`}
+    stroke={LANE_COLORS[1]} stroke-width="2.2" fill="none" opacity=".9" />);
+  // fix/clean-env：短分支
+  parts.push(<path d={`M9,${y(4)} C9,${y(4) + 10} 39,${y(4) - 2} 39,${y(4) + 12} L39,${h - 12}`}
+    stroke={LANE_COLORS[2]} stroke-width="2.2" fill="none" opacity=".9" />);
   for (let i = 0; i < rows; i++) {
-    const lane = i === 2 || i === 3 ? 1 : 0;
-    parts.push(<circle cx={9 + lane * 15} cy={13.5 + i * 27} r="4.6" fill={lane ? '#22c55e' : '#3b82f6'} stroke="#fff" stroke-width="1.8" />);
+    const lane = GRAPH_ROWS[i][4] ?? 0;
+    parts.push(<circle cx={9 + lane * 15} cy={y(i)} r="4.6" fill={LANE_COLORS[lane % LANE_COLORS.length]} stroke="#fff" stroke-width="1.8" />);
   }
   return <svg width="66" height={h} viewBox={`0 0 66 ${h}`} style={{ flex: 'none' }}>{parts}</svg>;
 }
@@ -411,6 +428,7 @@ export const MOCK_CSS = `
 .gm-pill.head { background:#3358e8; color:#fff; border-color:#3358e8; }
 .gm-pill.remote { background:#f4f7ff; color:#6079b5; }
 .gm-pill.dev { background:#ecfdf5; color:#15803d; border-color:#c9f2da; }
+.gm-pill.fix { background:#fff7ed; color:#b45309; border-color:#fce7c4; }
 .gm-ahead2 { font-size:11px; color:#5b6b8c; background:#f3f6fd; border:1px solid #e3eaf8; border-radius:8px; padding:0 6px; }
 .gm-empty-mini { font-size: 11.5px; color:#a8b3c9; padding: 6px 10px; }
 .gm-grow { display:flex; align-items:center; gap:8px; font-size:12px; border-radius:7px; padding:0 6px; }
