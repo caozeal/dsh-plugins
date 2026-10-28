@@ -76,16 +76,8 @@ jobs:
 
           cp "$RUNNER_TEMP/silent.mp4" "$RUNNER_TEMP/site/video/out/dsh-next-git-promo-silent.mp4"
 
-      # Demo 是纯静态的，直接拷进站点根；它按 ../lib/client.js 引用真实插件代码，
-      # 所以要保持 dsh-next-git/{demo,lib} 的相对层级。
-      - name: Copy interactive demo
-        run: |
-          set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/site/dsh-next-git"
-          cp -R dsh-next-git/demo "$RUNNER_TEMP/site/dsh-next-git/demo"
-          mkdir -p "$RUNNER_TEMP/site/dsh-next-git/lib"
-          cp dsh-next-git/lib/client.js "$RUNNER_TEMP/site/dsh-next-git/lib/client.js"
-
+      # Demo 由 video/pages.mjs 一并打进站点（本地手工上传 Cloudflare 走同一条路径），
+      # 这里只做存在性校验，避免两边各拷一份、改一处忘另一处。
       - name: Verify demo assets
         run: |
           set -euo pipefail

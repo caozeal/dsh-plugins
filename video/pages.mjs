@@ -138,6 +138,24 @@ const html = `<!doctype html>
 fs.mkdirSync(OUT_DIR, { recursive: true });
 fs.writeFileSync(path.join(OUT_DIR, 'index.html'), html);
 
+// 把在线 Demo 一起打进站点。
+// Demo 按 ../lib/client.js 引用真实插件代码，所以要保持 dsh-next-git/{demo,lib} 的
+// 相对层级。放在这里而不是只写在 CI 里，是为了「本地生成 → 手工上传 Cloudflare」
+// 这条既有发布路径也能一并带上 Demo，不必记两套命令。
+const DEMO_SRC = 'dsh-next-git/demo';
+const CLIENT_SRC = 'dsh-next-git/lib/client.js';
+const DEMO_DEST = path.join(OUT_DIR, 'dsh-next-git', 'demo');
+const LIB_DEST = path.join(OUT_DIR, 'dsh-next-git', 'lib');
+
+if (fs.existsSync(DEMO_SRC) && fs.existsSync(CLIENT_SRC)) {
+  fs.cpSync(DEMO_SRC, DEMO_DEST, { recursive: true });
+  fs.mkdirSync(LIB_DEST, { recursive: true });
+  fs.copyFileSync(CLIENT_SRC, path.join(LIB_DEST, 'client.js'));
+  console.log(`bundled demo -> ${DEMO_DEST}`);
+} else {
+  console.warn('跳过 Demo：找不到 dsh-next-git/demo 或 lib/client.js');
+}
+
 // 海报：沿用仓库里的片头帧，Pages 站点根目录放一份
 const poster = 'video/docs/poster-title.png';
 if (fs.existsSync(poster)) {
