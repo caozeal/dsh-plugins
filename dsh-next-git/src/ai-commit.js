@@ -2,8 +2,12 @@
  * git-manager — AI 提交信息生成。
  *
  * 流程：收集「已暂存 diff（为空则工作区 diff）→ 最近提交风格 → 调用默认模型的
- * llm.stream」→ 清理成一行提交信息。任何一步不可用都退回确定性文案（fallback），
- * 让面板始终能拿到一个可编辑的建议。
+ * llm.stream」→ 清理成「标题 + 可选正文」。任何一步不可用都退回确定性文案
+ * （fallback），让面板始终能拿到一条可编辑的建议。
+ *
+ * 系统提示词可由仓库自定义（git config dsh.commitPrompt），只替换「怎么写」的规则，
+ * 不改变「给模型看什么数据」——diff/文件/最近提交这条装配逻辑始终由本模块掌握，
+ * 避免用户把模板写坏后模型看不到 diff 而胡乱编造。
  */
 import { GitError } from './git.js'
 
@@ -11,11 +15,13 @@ const MAX_DIFF_CHARS = 12000
 /** 单次生成的 token 预算：reasoning 模型会先消耗思考 token，200 太小容易截断。 */
 const MAX_OUTPUT_TOKENS = 600
 
-const SYSTEM_PROMPT = [
+export const DEFAULT_SYSTEM_PROMPT = [
   '你是一个 Git 提交信息生成器。',
-  '只输出一行提交信息，不要解释、不要代码块、不要引号、不要句号结尾。',
-  '使用 Conventional Commits 风格（如 feat:/fix:/refactor:/docs:/chore:），',
-  '不超过 72 个字符。跟随仓库最近提交的语言：最近提交多为中文就用中文，否则用英文。',
+  '第一行是标题：Conventional Commits 风格（feat:/fix:/refactor:/docs:/chore: 等），不超过 72 个字符，不以句号结尾。',
+  '如果这次改动需要说明动机、影响面或取舍，空一行后写正文，正文每行不超过 72 个字符，可以分段。',
+  '改动很小、一句话能说清时不要硬凑正文。',
+  '不要解释、不要代码块、不要引号。',
+  '跟随仓库最近提交的语言：最近提交多为中文就用中文，否则用英文。',
 ].join('')
 
 /** 从 diff 与最近提交构造 user prompt。 */
@@ -46,6 +52,44 @@ export function sanitizeSubject(text) {
   subject = subject.replace(/\s+/g, ' ').trim()
   if (subject.length > 100) subject = subject.slice(0, 100).trim()
   return subject
+}
+
+/** 去掉整行的代码块围栏，保留内容。 */
+function stripFences(text) {
+  return String(text ?? '').replace(/^[ \t]*```[a-zA-Z0-9_-]*[ \t]*$/gm, '')
+}
+
+/**
+ * 清理模型输出的正文部分：去围栏、去首尾空行、去「正文：」这类前缀、限长。
+ * 不做逐行 trim——正文里的缩进（列表、代码片段）要保留。
+ * @param {string} text
+ * @returns {string}
+ */
+export function sanitizeBody(text) {
+  let value = stripFences(text).replace(/\r\n/g, '\n')
+  const lines = value.split('\n').map((line) => line.replace(/[ \t]+$/, ''))
+  while (lines.length > 0 && lines[0].trim() === '') lines.shift()
+  while (lines.length > 0 && lines[lines.length - 1].trim() === '') lines.pop()
+  let body = lines.join('\n').trim()
+  body = body.replace(/^(commit body|提交正文|正文)\s*[:：]\s*/i, '')
+  if (body.length > 2000) body = body.slice(0, 2000).trim()
+  return body
+}
+
+/**
+ * 把模型输出拆成「标题 + 正文」。
+ * 模型偶尔只给标题，也可能给「标题 / 空行 / 正文」，两种都要能吃下。
+ * @param {string} text
+ * @returns {{subject: string, body: string}}
+ */
+export function parseCommitMessage(text) {
+  const cleaned = stripFences(text).replace(/\r\n/g, '\n')
+  const lines = cleaned.split('\n')
+  let index = 0
+  while (index < lines.length && lines[index].trim() === '') index += 1
+  const subjectLine = index < lines.length ? lines[index] : ''
+  const rest = lines.slice(index + 1).join('\n')
+  return { subject: sanitizeSubject(subjectLine), body: sanitizeBody(rest) }
 }
 
 /** 最近提交是否以中文为主。 */
@@ -104,8 +148,9 @@ export function fallbackSubject({ files, stagedCount, Chinese }) {
  *   signal?: AbortSignal,
  *   llm?: unknown,
  *   selection?: {provider?: string, model?: string, reasoningEffort?: string},
+ *   systemPrompt?: string,
  * }} options
- * @returns {Promise<{message: string, model: string|null, fallback: boolean}>}
+ * @returns {Promise<{message: string, subject: string, body: string, model: string|null, fallback: boolean}>}
  */
 export async function generateCommitMessage(options) {
   const {
@@ -117,6 +162,7 @@ export async function generateCommitMessage(options) {
     selection,
     files = [],
     stagedCount = 0,
+    systemPrompt = '',
   } = options
 
   const staged = await runGit(['diff', '--cached', '--no-color'], { cwd, signal, allowFailure: true })
@@ -144,13 +190,12 @@ export async function generateCommitMessage(options) {
 
   const canUseLlm = Boolean(llm && selection && selection.provider && selection.model && diff.trim())
   if (!canUseLlm) {
-    return {
-      message: fallbackSubject({ files: changedFiles, stagedCount, Chinese: chinese }),
-      model,
-      fallback: true,
-    }
+    const subject = fallbackSubject({ files: changedFiles, stagedCount, Chinese: chinese })
+    return { message: subject, subject, body: '', model, fallback: true }
   }
 
+  // 用户自定义提示词：只覆盖「怎么写」的规则，装配数据仍由 buildPrompt 负责。
+  const customPrompt = typeof systemPrompt === 'string' ? systemPrompt.trim().slice(0, 4000) : ''
   const prompt = buildPrompt({ diff, files: changedFiles, recent, hint })
   let text = ''
   try {
@@ -158,7 +203,7 @@ export async function generateCommitMessage(options) {
       provider: selection.provider,
       model: selection.model,
       reasoningEffort: selection.reasoningEffort,
-      system: SYSTEM_PROMPT,
+      system: customPrompt === '' ? DEFAULT_SYSTEM_PROMPT : customPrompt,
       messages: [{ role: 'user', content: [{ type: 'text', text: prompt }] }],
       maxTokens: MAX_OUTPUT_TOKENS,
       temperature: 0.2,
@@ -182,13 +227,11 @@ export async function generateCommitMessage(options) {
     throw new GitError(`模型生成失败：${message}`, { code: 'ai-unavailable' })
   }
 
-  const subject = sanitizeSubject(text)
-  if (!looksLikeSubject(subject)) {
-    return {
-      message: fallbackSubject({ files: changedFiles, stagedCount, Chinese: chinese }),
-      model,
-      fallback: true,
-    }
+  const parsed = parseCommitMessage(text)
+  if (!looksLikeSubject(parsed.subject)) {
+    const subject = fallbackSubject({ files: changedFiles, stagedCount, Chinese: chinese })
+    return { message: subject, subject, body: '', model, fallback: true }
   }
-  return { message: subject, model, fallback: false }
+  const message = parsed.body === '' ? parsed.subject : parsed.subject + '\n\n' + parsed.body
+  return { message, subject: parsed.subject, body: parsed.body, model, fallback: false }
 }

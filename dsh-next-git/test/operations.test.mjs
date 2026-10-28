@@ -277,3 +277,97 @@ test('未知 op / 非对象参数报 invalid-params', async () => {
     (error) => error instanceof GitError && error.code === 'invalid-params',
   )
 })
+test('discard：按模式选择 git restore / git clean', async () => {
+  const routes = [[['rev-parse', '--show-toplevel'], ok(ROOT + '\n')]]
+  const { exec, calls } = makeExec(routes)
+  const ops = createOperations({ exec })
+  await ops.handle('discard', { cwd: CWD, paths: ['a.txt'], mode: 'worktree' })
+  await ops.handle('discard', { cwd: CWD, paths: ['b.txt'], mode: 'untracked' })
+  await ops.handle('discard', { cwd: CWD, paths: ['c.txt'], mode: 'all' })
+  const writes = calls.map((call) => call.args.join(' '))
+  assert.ok(writes.includes('restore --worktree -- a.txt'), 'worktree 走 restore --worktree')
+  assert.ok(writes.includes('clean -f -d -- b.txt'), 'untracked 走 clean -f -d')
+  assert.ok(writes.includes('restore --staged --worktree -- c.txt'), 'all 连暂存区一起回退')
+})
+
+test('discard：未知模式与空路径都被拒绝', async () => {
+  const { exec } = makeExec([[['rev-parse', '--show-toplevel'], ok(ROOT + '\n')]])
+  const ops = createOperations({ exec })
+  await assert.rejects(
+    () => ops.handle('discard', { cwd: CWD, paths: ['a.txt'], mode: 'everything' }),
+    (error) => error instanceof GitError && error.code === 'invalid-params',
+  )
+  await assert.rejects(
+    () => ops.handle('discard', { cwd: CWD, paths: [], mode: 'worktree' }),
+    (error) => error instanceof GitError && error.code === 'invalid-params',
+  )
+})
+
+test('discard：以 - 开头的路径补 ./ 前缀，避免被当成选项', async () => {
+  const { exec, calls } = makeExec([[['rev-parse', '--show-toplevel'], ok(ROOT + '\n')]])
+  const ops = createOperations({ exec })
+  await ops.handle('discard', { cwd: CWD, paths: ['--force'], mode: 'worktree' })
+  assert.ok(calls.some((call) => call.args.join(' ') === 'restore --worktree -- ./--force'))
+})
+
+test('stashPush：默认不带 -u，传 includeUntracked 才加', async () => {
+  const { exec, calls } = makeExec([[['rev-parse', '--show-toplevel'], ok(ROOT + '\n')]])
+  const ops = createOperations({ exec })
+  await ops.handle('stashPush', { cwd: CWD })
+  await ops.handle('stashPush', { cwd: CWD, message: '临时存一下', includeUntracked: true })
+  const writes = calls.map((call) => call.args.join(' '))
+  assert.ok(writes.includes('stash push'))
+  assert.ok(writes.includes('stash push -u -m 临时存一下'))
+})
+
+test('stashPop / stashDrop：索引拼成 stash@{n}，非法索引被拒', async () => {
+  const { exec, calls } = makeExec([[['rev-parse', '--show-toplevel'], ok(ROOT + '\n')]])
+  const ops = createOperations({ exec })
+  await ops.handle('stashPop', { cwd: CWD })
+  await ops.handle('stashPop', { cwd: CWD, index: 2 })
+  await ops.handle('stashDrop', { cwd: CWD, index: 1 })
+  const writes = calls.map((call) => call.args.join(' '))
+  assert.ok(writes.includes('stash pop stash@{0}'))
+  assert.ok(writes.includes('stash pop stash@{2}'))
+  assert.ok(writes.includes('stash drop stash@{1}'))
+  await assert.rejects(
+    () => ops.handle('stashPop', { cwd: CWD, index: -1 }),
+    (error) => error instanceof GitError && error.code === 'invalid-params',
+  )
+  await assert.rejects(
+    () => ops.handle('stashDrop', { cwd: CWD, index: 1.5 }),
+    (error) => error instanceof GitError && error.code === 'invalid-params',
+  )
+})
+
+test('setCommitPrompt：写入 --local dsh.commitPrompt，空串则清除', async () => {
+  const routes = [
+    [['rev-parse', '--show-toplevel'], ok(ROOT + '\n')],
+    [['config', '--get', 'dsh.commitPrompt'], ok('自定义规则\n')],
+  ]
+  const { exec, calls } = makeExec(routes)
+  const ops = createOperations({ exec })
+  const saved = await ops.handle('setCommitPrompt', { cwd: CWD, prompt: '自定义规则' })
+  assert.equal(saved.prompt, '自定义规则')
+  assert.ok(calls.some((call) => call.args.join('\u0000') === ['config', '--local', 'dsh.commitPrompt', '自定义规则'].join('\u0000')))
+  await ops.handle('setCommitPrompt', { cwd: CWD, prompt: '   ' })
+  assert.ok(calls.some((call) => call.args.join(' ') === 'config --local --unset dsh.commitPrompt'))
+})
+
+test('setCommitPrompt：超长提示词被拒绝', async () => {
+  const { exec } = makeExec([[['rev-parse', '--show-toplevel'], ok(ROOT + '\n')]])
+  const ops = createOperations({ exec })
+  await assert.rejects(
+    () => ops.handle('setCommitPrompt', { cwd: CWD, prompt: 'x'.repeat(4001) }),
+    (error) => error instanceof GitError && error.code === 'invalid-params',
+  )
+})
+
+test('snapshot：带上仓库自定义提交提示词', async () => {
+  const routes = snapshotRoutes()
+  routes.push([['config', '--get', 'dsh.commitPrompt'], ok('用英文写，不要 emoji\n')])
+  const { exec } = makeExec(routes)
+  const ops = createOperations({ exec })
+  const data = await ops.handle('snapshot', { cwd: CWD })
+  assert.equal(data.commitPrompt, '用英文写，不要 emoji')
+})

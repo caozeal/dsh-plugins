@@ -77,7 +77,12 @@
       ],
       "conflicted": []
     },
-    "stashes": []
+    "stashes": [
+      {
+        "index": 0,
+        "message": "登录页改到一半，先放这儿"
+      }
+    ]
   },
   "graph": {
     "lines": [

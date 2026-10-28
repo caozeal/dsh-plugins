@@ -21,12 +21,20 @@ https://github.com/user-attachments/assets/c57169b4-df00-450d-b4f0-7a2c64db03b6
 - **便捷分支切换**：顶栏下拉出全部本地/远程分支（含 ahead/behind 与最近提交），
   一键切换；点远程分支自动建同名跟踪分支；支持新建、删除分支。
 - **变更管理**：staged / unstaged / untracked / conflicted 四组文件列表，
-  单文件或全部暂存/取消暂存，点击文件看 diff。
+  单文件或全部暂存/取消暂存，点击文件看 diff。每行还带**丢弃**按钮：
+  未暂存回到 HEAD、未跟踪直接删除、已暂存连暂存区一起回退（都会二次确认）。
+  冲突文件不给丢弃——那等于放弃冲突解决状态，容易误伤。
+- **Stash**：分支页底部可直接 stash 当前改动（有未跟踪文件时自动带 `-u`），
+  列出全部 stash，一键恢复（pop）或删除（drop）。
 - **提交 / 推送 / 拉取**：Fetch、Pull、Push 按钮，提交信息输入框，
   支持「提交」「提交并推送」；无 upstream 时自动 `push -u origin <branch>`。
-- **AI 提交信息**：读取已暂存 diff + 最近提交风格，调用当前默认模型生成一行
-  Conventional Commits 提交信息，填入输入框供编辑；模型不可用时降级为
-  `chore: 更新 N 个文件`。
+- **AI 提交信息**：读取已暂存 diff + 最近提交风格，调用当前默认模型生成
+  Conventional Commits 提交信息（标题 + 可选正文，正文用来说清动机与影响面），
+  填入输入框供编辑；模型不可用时降级为 `chore: 更新 N 个文件`。
+- **可自定义的提交提示词**：提交区齿轮按钮可改写系统提示词，存在
+  `git config dsh.commitPrompt`（本地优先、可全局兜底，不产生工作区文件）。
+  自定义只改「怎么写」，diff 与变更文件列表始终由 Host 装配后传给模型——
+  提示词写坏也不会让模型凭空编造。
 - **彩色提交图（graph）**：`git log --graph --all` 的图形化渲染。每条分支线一种颜色，
   跨行保持同色；分支名徽章与它自己的线条严格同色，滚到哪都认得出。同一屏出现过的
   分支保证互不撞色（按首次出现顺序分配，不是对名字取哈希——8 色槽下取模约 1/8 会撞）。
@@ -179,7 +187,7 @@ op 一览：`snapshot` `graph` `diff` `stage` `unstage` `switchBranch` `deleteBr
   `fallback: true`（UI 显示「模型输出不可用，已生成降级文案」）。
 - **错误码分层**：`invalid-params`（含未知 op）HTTP 400；git 业务失败 HTTP 200 +
   `ok:false`，UI 统一按 body 判定。
-- **文案全部走 Client locale**（zh/en 共 104 个 key），tab 标题与头部按钮都是
+- **文案全部走 Client locale**（zh/en 共 134 个 key），tab 标题与头部按钮都是
   「Git 管理 / 打开 Git 管理」；面板只用 `--dsw-alias-*` 主题 token。
 
 ## 已知限制
@@ -189,5 +197,5 @@ op 一览：`snapshot` `graph` `diff` `stage` `unstage` `switchBranch` `deleteBr
 - 大仓库的 graph 默认取 80 条（上限 300）；diff 超过 400k 字符会截断。
 - 会话的工作目录被删除/不可访问时，面板显示「工作目录不存在或无法访问」空态
   （Host 返回 `cwd-unavailable`），不会展示原始 spawn 错误。
-- AI 提交信息只生成一行 subject，不生成 body。
+- 冲突只做展示（conflicted 分组 + 横幅提示），不提供 accept ours/theirs 之类的解决 UI。
 - 网络操作超时 180s；无凭据的私有仓库会失败并把 git stderr 显示出来。

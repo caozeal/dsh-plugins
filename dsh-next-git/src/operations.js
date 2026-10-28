@@ -27,9 +27,16 @@ const DIFF_MAX_CHARS = 400000
 
 /** 支持的操作名。 */
 const OPS = [
-  'snapshot', 'graph', 'diff', 'stage', 'unstage', 'switchBranch', 'deleteBranch',
+  'snapshot', 'graph', 'diff', 'stage', 'unstage', 'discard', 'switchBranch', 'deleteBranch',
   'commit', 'fetch', 'pull', 'push', 'aiCommit',
+  'stashPush', 'stashPop', 'stashDrop', 'setCommitPrompt',
 ]
+
+/** 自定义提交提示词在 git config 里的键。用 git config 而不是新增工作区文件：
+ *  不污染 git status、不打扰 .gitignore，且天然区分本地/全局（写入用 --local，
+ *  读取走默认级联，所以用户可以先设一条全局默认再按仓库覆盖）。 */
+const COMMIT_PROMPT_KEY = 'dsh.commitPrompt'
+const COMMIT_PROMPT_MAX = 4000
 
 /** 只接受安全的 ref/远程名，避免被当作命令行选项。 */
 const SAFE_REF = /^[A-Za-z0-9._/-]+$/
@@ -160,10 +167,11 @@ export function createOperations(deps) {
         remotes: [],
         status: { clean: true, staged: [], unstaged: [], untracked: [], conflicted: [] },
         stashes: [],
+        commitPrompt: '',
       }
     }
     const root = resolved.root
-    const [statusRes, branchesRes, remotesRes, stashRes, headRes, urlRes] = await Promise.all([
+    const [statusRes, branchesRes, remotesRes, stashRes, headRes, urlRes, promptRes] = await Promise.all([
       runGit(['status', '--porcelain=v1', '-z', '--branch', '--untracked-files=all'], {
         cwd: root,
         signal,
@@ -178,6 +186,7 @@ export function createOperations(deps) {
       runGit(['stash', 'list', '--format=%gd%x00%s'], { cwd: root, signal, allowFailure: true }),
       runGit(['rev-parse', '--short', 'HEAD'], { cwd: root, signal, allowFailure: true }),
       runGit(['config', '--get', 'remote.origin.url'], { cwd: root, signal, allowFailure: true }),
+      runGit(['config', '--get', COMMIT_PROMPT_KEY], { cwd: root, signal, allowFailure: true }),
     ])
     const parsed = parsePorcelain(statusRes.stdout)
     const head = parseBranchHeader(parsed.branchLine)
@@ -209,6 +218,7 @@ export function createOperations(deps) {
       remotes,
       status: { clean, ...groups },
       stashes: parseStashes(stashRes.stdout),
+      commitPrompt: promptRes.code === 0 ? promptRes.stdout.trim() : '',
     }
   }
 
@@ -307,6 +317,31 @@ export function createOperations(deps) {
     const args = params.all === true
       ? ['reset', '-q']
       : ['restore', '--staged', '--', ...assertPaths(params.paths)]
+    const result = await runGit(args, { cwd: root, signal, timeoutMs: timeouts.write })
+    return { output: joinOutput(result.stdout, result.stderr) }
+  }
+
+  /**
+   * 丢弃改动。三种模式对应变更列表里的三个分组：
+   *   worktree  —— 未暂存（git restore --worktree）
+   *   untracked —— 未跟踪（git clean -f -d）
+   *   all       —— 已暂存，连暂存区一起回退（git restore --staged --worktree）
+   * 都不可恢复，前端必须二次确认后才调用。
+   */
+  async function discard(params, signal) {
+    const cwd = assertCwd(params.cwd)
+    const resolved = await repoRoot(cwd, signal)
+    const root = resolved.root
+    if (!root) throw new GitError(`当前目录不是 Git 仓库：${cwd}${resolved.error ? `（${resolved.error}）` : ''}`, { code: 'not-a-repo' })
+    const mode = params.mode
+    if (!['worktree', 'untracked', 'all'].includes(mode)) {
+      throw new GitError(`未知的丢弃模式：${String(mode)}`, { code: 'invalid-params' })
+    }
+    const paths = assertPaths(params.paths)
+    let args
+    if (mode === 'untracked') args = ['clean', '-f', '-d', '--', ...paths]
+    else if (mode === 'all') args = ['restore', '--staged', '--worktree', '--', ...paths]
+    else args = ['restore', '--worktree', '--', ...paths]
     const result = await runGit(args, { cwd: root, signal, timeoutMs: timeouts.write })
     return { output: joinOutput(result.stdout, result.stderr) }
   }
@@ -429,6 +464,80 @@ export function createOperations(deps) {
     return { branch, output: joinOutput(result.stdout, result.stderr) }
   }
 
+  /** stash 索引只接受非负整数，避免拼进 stash@{...} 时被注入别的 ref。 */
+  function assertStashIndex(value, fallback) {
+    const raw = value === undefined || value === null ? fallback : value
+    const index = Number(raw)
+    if (!Number.isInteger(index) || index < 0 || index > 999) {
+      throw new GitError(`stash 索引非法：${String(raw)}`, { code: 'invalid-params' })
+    }
+    return index
+  }
+
+  async function stashPush(params, signal) {
+    const cwd = assertCwd(params.cwd)
+    const resolved = await repoRoot(cwd, signal)
+    const root = resolved.root
+    if (!root) throw new GitError(`当前目录不是 Git 仓库：${cwd}${resolved.error ? `（${resolved.error}）` : ''}`, { code: 'not-a-repo' })
+    const args = ['stash', 'push']
+    if (params.includeUntracked === true) args.push('-u')
+    const message = typeof params.message === 'string' ? params.message.trim().slice(0, 200) : ''
+    if (message !== '') args.push('-m', message)
+    const result = await runGit(args, { cwd: root, signal, timeoutMs: timeouts.write })
+    return { output: joinOutput(result.stdout, result.stderr) }
+  }
+
+  async function stashPop(params, signal) {
+    const cwd = assertCwd(params.cwd)
+    const resolved = await repoRoot(cwd, signal)
+    const root = resolved.root
+    if (!root) throw new GitError(`当前目录不是 Git 仓库：${cwd}${resolved.error ? `（${resolved.error}）` : ''}`, { code: 'not-a-repo' })
+    const index = assertStashIndex(params.index, 0)
+    const result = await runGit(['stash', 'pop', `stash@{${index}}`], {
+      cwd: root, signal, timeoutMs: timeouts.write,
+    })
+    return { output: joinOutput(result.stdout, result.stderr) }
+  }
+
+  async function stashDrop(params, signal) {
+    const cwd = assertCwd(params.cwd)
+    const resolved = await repoRoot(cwd, signal)
+    const root = resolved.root
+    if (!root) throw new GitError(`当前目录不是 Git 仓库：${cwd}${resolved.error ? `（${resolved.error}）` : ''}`, { code: 'not-a-repo' })
+    const index = assertStashIndex(params.index, 0)
+    const result = await runGit(['stash', 'drop', `stash@{${index}}`], {
+      cwd: root, signal, timeoutMs: timeouts.write,
+    })
+    return { output: joinOutput(result.stdout, result.stderr) }
+  }
+
+  /** 读写自定义提交提示词；传空串表示恢复默认。 */
+  async function setCommitPrompt(params, signal) {
+    const cwd = assertCwd(params.cwd)
+    const resolved = await repoRoot(cwd, signal)
+    const root = resolved.root
+    if (!root) throw new GitError(`当前目录不是 Git 仓库：${cwd}${resolved.error ? `（${resolved.error}）` : ''}`, { code: 'not-a-repo' })
+    const raw = typeof params.prompt === 'string' ? params.prompt : ''
+    if (raw.length > COMMIT_PROMPT_MAX) {
+      throw new GitError(`提示词过长（上限 ${COMMIT_PROMPT_MAX} 字）`, { code: 'invalid-params' })
+    }
+    const value = raw.trim()
+    if (value === '') {
+      // 没设过时 git config --unset 退出码非 0，不算失败。
+      await runGit(['config', '--local', '--unset', COMMIT_PROMPT_KEY], {
+        cwd: root, signal, timeoutMs: timeouts.write, allowFailure: true,
+      })
+    } else {
+      await runGit(['config', '--local', COMMIT_PROMPT_KEY, value], {
+        cwd: root, signal, timeoutMs: timeouts.write,
+      })
+    }
+    const read = await runGit(['config', '--get', COMMIT_PROMPT_KEY], {
+      cwd: root, signal, allowFailure: true,
+    })
+    return { prompt: read.code === 0 ? read.stdout.trim() : '' }
+  }
+
   async function aiCommit(params, signal) {
     const cwd = assertCwd(params.cwd)
     const resolved = await repoRoot(cwd, signal)
@@ -436,6 +545,10 @@ export function createOperations(deps) {
     if (!root) throw new GitError(`当前目录不是 Git 仓库：${cwd}${resolved.error ? `（${resolved.error}）` : ''}`, { code: 'not-a-repo' })
     const hint = typeof params.hint === 'string' ? params.hint.slice(0, 500) : ''
     const context = ai() ?? {}
+    const promptRes = await runGit(['config', '--get', COMMIT_PROMPT_KEY], {
+      cwd: root, signal, allowFailure: true,
+    })
+    const systemPrompt = promptRes.code === 0 ? promptRes.stdout : ''
     return generate({
       runGit: (args, options = {}) => runGit(args, {
         cwd: root,
@@ -448,6 +561,7 @@ export function createOperations(deps) {
       signal,
       llm: context.llm,
       selection: context.selection,
+      systemPrompt,
     })
   }
 
@@ -457,6 +571,7 @@ export function createOperations(deps) {
     diff,
     stage,
     unstage,
+    discard,
     switchBranch,
     deleteBranch,
     commit,
@@ -464,6 +579,10 @@ export function createOperations(deps) {
     pull,
     push,
     aiCommit,
+    stashPush,
+    stashPop,
+    stashDrop,
+    setCommitPrompt,
   }
 
   /**

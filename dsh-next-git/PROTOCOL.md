@@ -133,7 +133,8 @@ dsh-next-git/
     "untracked":  [{ "path": "new.txt",  "status": "?" }],
     "conflicted": [{ "path": "both.js",  "status": "UU" }]
   },
-  "stashes": [{ "index": 0, "message": "WIP on main: abc1234 msg" }]
+  "stashes": [{ "index": 0, "message": "WIP on main: abc1234 msg" }],
+  "commitPrompt": ""            // 仓库自定义的 AI 提交提示词，未设置为空串
 }
 ```
 
@@ -222,13 +223,26 @@ dsh-next-git/
 | --- | --- | --- | --- |
 | `stage` | `{ cwd, paths?: string[], all?: true }` | `git add -- <paths>` / `git add -A` | `{ output }` |
 | `unstage` | `{ cwd, paths?, all? }` | `git restore --staged -- <paths>` / `git reset -q` | `{ output }` |
+| `discard` | `{ cwd, paths: string[], mode: 'worktree'\|'untracked'\|'all' }` | `git restore --worktree -- <paths>` / `git clean -f -d -- <paths>` / `git restore --staged --worktree -- <paths>` | `{ output }` |
 | `switchBranch` | `{ cwd, name, create?: boolean, from?: string }` | `git checkout -b <name> [from]` / `git checkout <name>` | `{ branch, output }` |
 | `deleteBranch` | `{ cwd, name, force?: boolean }` | `git branch -d\|-D <name>` | `{ output }` |
 | `commit` | `{ cwd, message, stageAll?: boolean }` | 可选 `git add -A` 后 `git commit -m <message>` | `{ hash, subject, output }` |
 | `fetch` | `{ cwd, remote?: string }` | `git fetch --all --prune`（有 remote 时 `git fetch <remote>`） | `{ output }` |
 | `pull` | `{ cwd }` | `git pull` | `{ output, branch }` |
 | `push` | `{ cwd, setUpstream?: boolean }` | 无 upstream 时 `git push -u origin <branch>`，否则 `git push` | `{ output, branch }` |
-| `aiCommit` | `{ cwd, hint?: string }` | 见 §3.5 | `{ message, model, fallback }` |
+| `aiCommit` | `{ cwd, hint?: string }` | 见 §3.5 | `{ message, subject, body, model, fallback }` |
+| `stashPush` | `{ cwd, message?: string, includeUntracked?: boolean }` | `git stash push [-u] [-m <msg>]` | `{ output }` |
+| `stashPop` | `{ cwd, index?: number }`（默认 0） | `git stash pop stash@{n}` | `{ output }` |
+| `stashDrop` | `{ cwd, index?: number }` | `git stash drop stash@{n}` | `{ output }` |
+| `setCommitPrompt` | `{ cwd, prompt: string }` | `git config --local dsh.commitPrompt <v>`；空串则 `--unset` | `{ prompt }` |
+
+`discard` 的三种模式对应变更列表的三个分组：`worktree` 只回退工作区，
+`untracked` 删除未跟踪文件，`all` 连暂存区一起回退。三者都不可恢复，
+Client 必须先确认再调用。冲突文件不提供 discard（语义等于放弃冲突解决状态）。
+
+`setCommitPrompt` 用 `git config` 而不是在工作区新增文件：不污染 `git status`、
+不用改 `.gitignore`。写入走 `--local`，读取走默认级联，所以可以先设一条全局默认、
+再按仓库覆盖。`prompt` 上限 4000 字符。
 
 写操作失败（非 0 退出）返回 `ok:false`，`error.message` 里带 `stderr` 首 2000 字符。
 
@@ -244,13 +258,20 @@ Host 端流程：
 4. `llm.stream({ provider: sel.provider, model: sel.model, reasoningEffort: sel.reasoningEffort,
    system: <中文/英文都行的系统提示>, messages: [{ role: 'user', content: [{ type: 'text', text: prompt }] }],
    maxTokens: 200, temperature: 0.2, signal })`，累积 `text-delta` 得到文本。
-5. 清理输出：去掉 code fence、首尾空白、取第一行；再校验（`looksLikeSubject`）：长度 <8、
-   无 Conventional 前缀、以连接词/标点/未闭合括号结尾都视为模型输出不可用。为空或不可用则走降级：根据变更文件生成
+5. 清理输出：去掉 code fence、取第一个非空行作为标题，其余作为正文（`parseCommitMessage`）；
+   再校验标题（`looksLikeSubject`）：长度 <8、无 Conventional 前缀、以连接词/标点/未闭合括号
+   结尾都视为模型输出不可用。为空或不可用则走降级：根据变更文件生成
    `chore: 更新 N 个文件`（中文环境）/`chore: update N files`，并置 `fallback: true`。
-6. `data.model` 为 `"<provider>/<model>"`。
+6. `data.message` 是 `subject` + 空行 + `body`（无正文时就是标题）；另单独给出
+   `subject` 与 `body` 便于 UI 分别展示。`data.model` 为 `"<provider>/<model>"`。
 
-系统提示要求：只输出一行提交信息，遵循仓库最近的提交风格（中文仓库用中文），
-不超过 72 字符，不要引号、不要解释。
+**自定义提示词**：`git config dsh.commitPrompt` 非空时替换系统提示词（见
+`DEFAULT_SYSTEM_PROMPT`），只改「怎么写」，不改「给模型看什么」——diff、变更文件、
+最近提交、hint 的装配逻辑始终由 Host 掌握，用户把提示词写坏也不会让模型看不到 diff。
+
+默认系统提示词要求：第一行是 Conventional Commits 标题、不超过 72 字符、不以句号结尾；
+需要说明动机/影响面时空一行写正文，正文每行不超过 72 字符；改动很小时不要硬凑正文；
+跟随仓库最近的提交语言。
 
 ### 3.6 超时
 

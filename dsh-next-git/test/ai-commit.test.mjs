@@ -1,6 +1,13 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { generateCommitMessage, looksLikeSubject, sanitizeSubject } from '../src/ai-commit.js'
+import {
+  DEFAULT_SYSTEM_PROMPT,
+  generateCommitMessage,
+  looksLikeSubject,
+  parseCommitMessage,
+  sanitizeBody,
+  sanitizeSubject,
+} from '../src/ai-commit.js'
 import { GitError } from '../src/git.js'
 
 const CWD = '/tmp/repo'
@@ -59,7 +66,60 @@ test('模型输出可用时直接使用', async () => {
     llm: makeLlm('feat: add git manager panel'),
     selection: { provider: 'p', model: 'm' },
   })
-  assert.deepEqual(result, { message: 'feat: add git manager panel', model: 'p/m', fallback: false })
+  assert.deepEqual(result, {
+    message: 'feat: add git manager panel',
+    subject: 'feat: add git manager panel',
+    body: '',
+    model: 'p/m',
+    fallback: false,
+  })
+})
+
+test('parseCommitMessage 拆出标题与正文', () => {
+  assert.deepEqual(parseCommitMessage('feat: 加面板\n\n因为原来要开终端，很麻烦。'), {
+    subject: 'feat: 加面板',
+    body: '因为原来要开终端，很麻烦。',
+  })
+  assert.deepEqual(parseCommitMessage('fix: 修个 bug'), { subject: 'fix: 修个 bug', body: '' })
+  const fenced = ['```text', 'feat: 加面板', '', '正文一', '正文二', '```'].join('\n')
+  assert.deepEqual(parseCommitMessage(fenced), { subject: 'feat: 加面板', body: '正文一\n正文二' })
+  assert.equal(sanitizeBody('  说明：\n  - 甲\n  - 乙\n'), '说明：\n  - 甲\n  - 乙')
+})
+
+test('模型给出标题+正文时 message 用空行拼接', async () => {
+  const result = await generateCommitMessage({
+    runGit: makeRunGit(),
+    cwd: CWD,
+    llm: makeLlm('feat: 加面板\n\n原来要开终端，现在面板里就能做。'),
+    selection: { provider: 'p', model: 'm' },
+  })
+  assert.equal(result.fallback, false)
+  assert.equal(result.subject, 'feat: 加面板')
+  assert.equal(result.body, '原来要开终端，现在面板里就能做。')
+  assert.equal(result.message, 'feat: 加面板\n\n原来要开终端，现在面板里就能做。')
+})
+
+test('自定义系统提示词会替换默认提示词', async () => {
+  let seen = null
+  const llm = {
+    stream(options) {
+      seen = options.system
+      return (async function* generate() {
+        yield { type: 'text-delta', index: 0, text: 'feat: 自定义' }
+        yield { type: 'finish', reason: { kind: 'stop' } }
+      })()
+    },
+  }
+  const result = await generateCommitMessage({
+    runGit: makeRunGit(), cwd: CWD, llm, selection: { provider: 'p', model: 'm' },
+    systemPrompt: '只写 emoji，不要文字。',
+  })
+  assert.equal(seen, '只写 emoji，不要文字。')
+  assert.equal(result.fallback, false)
+  await generateCommitMessage({
+    runGit: makeRunGit(), cwd: CWD, llm, selection: { provider: 'p', model: 'm' }, systemPrompt: '   ',
+  })
+  assert.equal(seen, DEFAULT_SYSTEM_PROMPT)
 })
 
 test('模型输出被 reasoning token 截断时走确定性降级', async () => {

@@ -441,6 +441,54 @@ async function main() {
       assert(!branches.includes('smoke-branch'), '分支仍然存在')
       return 'create/switch/delete OK'
     })
+    await check('discard worktree → 文件回到 HEAD', async () => {
+      await writeFile(join(scratch, 'a.txt'), 'broken by smoke\n')
+      await rpcOk('discard', { paths: ['a.txt'], mode: 'worktree' }, scratch)
+      const text = await readFile(join(scratch, 'a.txt'), 'utf8')
+      assert(!text.includes('broken by smoke'), 'discard 后内容仍是脏的')
+      return 'worktree 已回退'
+    })
+    await check('discard untracked → 文件被删除', async () => {
+      await writeFile(join(scratch, 'junk-smoke.txt'), 'junk\n')
+      assert(existsSync(join(scratch, 'junk-smoke.txt')), '前置条件失败：junk 文件没建出来')
+      await rpcOk('discard', { paths: ['junk-smoke.txt'], mode: 'untracked' }, scratch)
+      assert(!existsSync(join(scratch, 'junk-smoke.txt')), 'discard 后未跟踪文件仍在')
+      return 'untracked 已删除'
+    })
+    await check('discard 未知 mode → invalid-params', async () => {
+      const { error } = await rpcErr('discard', { paths: ['a.txt'], mode: 'nothing' }, scratch)
+      assert(error?.code === 'invalid-params', `error.code=${JSON.stringify(error?.code)}`)
+      return 'code=invalid-params'
+    })
+    await check('stashPush → 列表可见 → stashPop 还原', async () => {
+      await writeFile(join(scratch, 'a.txt'), 'stash me\n')
+      await rpcOk('stashPush', { message: 'smoke stash' }, scratch)
+      let snap = await rpcOk('snapshot', {}, scratch)
+      assert(snap.status.clean, 'stash 后工作区不干净')
+      assert(Array.isArray(snap.stashes) && snap.stashes.length >= 1, `stashes=${JSON.stringify(snap.stashes)}`)
+      assert(/smoke stash/.test(snap.stashes[0].message), `stash message=${snap.stashes[0].message}`)
+      await rpcOk('stashPop', { index: 0 }, scratch)
+      const text = await readFile(join(scratch, 'a.txt'), 'utf8')
+      assert(text.includes('stash me'), 'pop 后内容没回来')
+      snap = await rpcOk('snapshot', {}, scratch)
+      assert(snap.stashes.length === 0, `pop 后还有 ${snap.stashes.length} 条 stash`)
+      return 'push/pop OK'
+    })
+    await check('stashPop 非法索引 → invalid-params', async () => {
+      const { error } = await rpcErr('stashPop', { index: -1 }, scratch)
+      assert(error?.code === 'invalid-params', `error.code=${JSON.stringify(error?.code)}`)
+      return 'code=invalid-params'
+    })
+    await check('setCommitPrompt → snapshot 可见 → 清空恢复', async () => {
+      const saved = await rpcOk('setCommitPrompt', { prompt: '冒烟自定义提示词' }, scratch)
+      assert(saved.prompt === '冒烟自定义提示词', `prompt=${JSON.stringify(saved.prompt)}`)
+      let snap = await rpcOk('snapshot', {}, scratch)
+      assert(snap.commitPrompt === '冒烟自定义提示词', `snapshot.commitPrompt=${JSON.stringify(snap.commitPrompt)}`)
+      await rpcOk('setCommitPrompt', { prompt: '' }, scratch)
+      snap = await rpcOk('snapshot', {}, scratch)
+      assert(snap.commitPrompt === '', `清空后 commitPrompt=${JSON.stringify(snap.commitPrompt)}`)
+      return '读写一致'
+    })
 
     // ── 4. 网络 op：失败时错误可见（scratch 仓库没有 remote）────────────
     console.log('\n[4] 网络 op 失败时错误可读（无 remote 的仓库）')
