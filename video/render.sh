@@ -16,6 +16,8 @@ agent-browser wait --fn "window.__ready === true" >/dev/null
 
 TOTAL=$(agent-browser eval "String(window.__total)" | tr -d '"')
 END=$(node -e "console.log(Math.round($TOTAL*$FPS))")
+# 配乐/音效脚本按片长裁剪；不传就会出现画面 45s、音频 37.8s，-shortest 把片子截短。
+export FILM_SECONDS="$TOTAL"
 rm -rf "$FRAMES"; mkdir -p "$FRAMES"
 FRAME_START=0 FRAME_END=$END FPS=$FPS TOTAL=$TOTAL SESSION="$SESSION" node capture.mjs "$FRAMES"
 

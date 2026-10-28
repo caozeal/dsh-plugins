@@ -4,7 +4,7 @@
 >
 > 原名 `dsh-plugin-git-manager`，2026-10 起包名改为 `@caozeal/dsh-next-git`（目录仍为 `dsh-next-git/`，功能不变）。
 
-## 41 秒介绍片
+## 45 秒介绍片
 
 https://github.com/user-attachments/assets/c57169b4-df00-450d-b4f0-7a2c64db03b6
 

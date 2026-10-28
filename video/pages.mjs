@@ -17,7 +17,7 @@ const CLIPS = [
   {
     file: 'dsh-next-git-promo-mockup.mp4',
     title: 'dsh-next-git 介绍片',
-    note: '41 秒 · 1080p60 · 全片为渲染的界面示意，不含真实会话',
+    note: '45 秒 · 1080p60 · 全片为渲染的界面示意，不含真实会话',
     primary: true,
   },
   {

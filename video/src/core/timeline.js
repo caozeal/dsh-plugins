@@ -13,9 +13,10 @@ export const SCENES = [
   { id: 'm7-diff', file: './scenes/m7-diff.js', dur: 3.2, slot: 3.0, label: '07 Diff' },
   { id: 'm8-ai-commit', file: './scenes/m8-ai-commit.js', dur: 4.6, slot: 4.4, label: '08 AI 提交信息' },
   { id: 'm9-tools', file: './scenes/m9-tools.js', dur: 3.6, slot: 3.8, label: '09 丢弃 / Stash / 提示词' },
-  { id: 'm10-graph', file: './scenes/m10-graph.js', dur: 4.2, slot: 4.0, label: '10 提交图' },
-  { id: 'm11-details', file: './scenes/m11-details.js', dur: 3.8, slot: 3.6, label: '11 细节' },
-  { id: 'm12-install', file: './scenes/m12-install.js', dur: 4.2, slot: 4.2, label: '12 安装与收尾' },
+  { id: 'm9b-conflict', file: './scenes/m9b-conflict.js', dur: 3.8, slot: 4.0, label: '10 AI 解决冲突' },
+  { id: 'm10-graph', file: './scenes/m10-graph.js', dur: 4.2, slot: 4.0, label: '11 提交图' },
+  { id: 'm11-details', file: './scenes/m11-details.js', dur: 3.8, slot: 3.6, label: '12 细节' },
+  { id: 'm12-install', file: './scenes/m12-install.js', dur: 4.2, slot: 4.2, label: '13 安装与收尾' },
 ];
 
 // Cross-fade length between adjacent scenes.
