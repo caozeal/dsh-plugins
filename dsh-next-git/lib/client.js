@@ -115,6 +115,10 @@ window.__ModuleLoader__.load({
       'diff.deletions': '-{n}',
       'diff.staged': '暂存区',
       'diff.worktree': '工作区',
+      'diff.conflict': '冲突差异 · 当前分支 ↔ 合入分支',
+      'diff.conflictSame': '两边内容完全一致',
+      'diff.conflictDeleted': '该文件在合并的某一侧被删除',
+      'diff.conflictDeletedHint': '点右上角「解决冲突」决定保留还是删除',
       'diff.commit': '提交 {hash}',
       'diff.untracked': '新文件',
       'status.loading': '加载中…',
@@ -272,6 +276,10 @@ window.__ModuleLoader__.load({
       'diff.deletions': '-{n}',
       'diff.staged': 'Staged',
       'diff.worktree': 'Working tree',
+      'diff.conflict': 'Conflict · ours ↔ theirs',
+      'diff.conflictSame': 'Both sides are identical',
+      'diff.conflictDeleted': 'The file was deleted on one side of the merge',
+      'diff.conflictDeletedHint': 'Use "Resolve conflict" to keep or delete it',
       'diff.commit': 'Commit {hash}',
       'diff.untracked': 'New file',
       'status.loading': 'Loading…',
@@ -1960,9 +1968,11 @@ window.__ModuleLoader__.load({
       var diff = state.diff
       if (state.diffLoading) return h(EmptyState, { spinner: true, title: tr('status.loading') })
       if (!diff) return h(EmptyState, { title: tr('diff.empty') })
-      var title = diff.mode === 'commit'
-        ? tr('diff.commit', { hash: state.selected && state.selected.hash ? state.selected.hash.slice(0, 8) : '' })
-        : diff.mode === 'staged' ? tr('diff.staged') : diff.mode === 'untracked' ? tr('diff.untracked') : tr('diff.worktree')
+      var title = diff.conflict
+        ? tr('diff.conflict')
+        : diff.mode === 'commit'
+          ? tr('diff.commit', { hash: state.selected && state.selected.hash ? state.selected.hash.slice(0, 8) : '' })
+          : diff.mode === 'staged' ? tr('diff.staged') : diff.mode === 'untracked' ? tr('diff.untracked') : tr('diff.worktree')
       return h('div', { className: 'gm-scroll' },
         h('div', { className: 'gm-content-inner gm-diff' },
           h('div', { className: 'gm-diff-head' },
@@ -1971,11 +1981,22 @@ window.__ModuleLoader__.load({
             h('span', { className: 'gm-spacer' }),
             h('span', { className: 'gm-badge ok' }, '+' + diff.additions),
             h('span', { className: 'gm-badge err' }, '-' + diff.deletions),
-            diff.truncated ? h('span', { className: 'gm-badge warn' }, tr('diff.truncatedShort')) : null),
-          diff.binary
-            ? h(EmptyState, { title: tr('diff.binary') })
-            : diff.hunks.length === 0
-              ? h(EmptyState, { title: tr('diff.noText') })
+            diff.truncated ? h('span', { className: 'gm-badge warn' }, tr('diff.truncatedShort')) : null,
+            diff.conflict
+              ? h(Btn, {
+                label: tr('conflict.resolve'),
+                icon: 'ai',
+                small: true,
+                variant: 'primary',
+                onClick: function () { props.actions.openResolution({ path: diff.path }) },
+              })
+              : null),
+          diff.conflict && (!diff.oursExists || !diff.theirsExists)
+            ? h(EmptyState, { title: tr('diff.conflictDeleted'), hint: tr('diff.conflictDeletedHint') })
+            : diff.binary
+              ? h(EmptyState, { title: tr('diff.binary') })
+              : diff.hunks.length === 0
+                ? h(EmptyState, { title: diff.conflict ? tr('diff.conflictSame') : tr('diff.noText') })
               : diff.hunks.map(function (hunk, hunkIndex) {
                 return h('div', { key: 'h:' + hunkIndex },
                   h('div', { className: 'gm-hunk' }, hunk.header),

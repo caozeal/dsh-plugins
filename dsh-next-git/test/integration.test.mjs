@@ -316,3 +316,21 @@ test('真实仓库：applyConflict 写回自定义内容并标记已解决', asy
     (error) => error.code === 'invalid-params',
   )
 })
+test('真实仓库：冲突文件的 diff 能解析出 hunk（不是 combined diff）', async (t) => {
+  // 回归：git diff 未合并路径输出 diff --cc / @@@ / ++ 前缀，解析器读不出 hunk，
+  // 面板点进去是一片空白。现在改成 diff :2: 与 :3: 两个 blob。
+  const dir = await makeConflictRepo('conflictDiff')
+  t.after(() => rm(dir, { recursive: true, force: true }))
+
+  const ops = createOperations({ exec: realExec, ai: () => null })
+  const data = await ops.handle('diff', { cwd: dir, mode: 'worktree', path: 'a.txt' })
+  assert.equal(data.conflict, true)
+  assert.equal(data.mode, 'conflict')
+  assert.equal(data.oursExists, true)
+  assert.equal(data.theirsExists, true)
+  assert.ok(data.hunks.length > 0, '冲突差异不应为空')
+  assert.ok(data.additions > 0 && data.deletions > 0, `+${data.additions} -${data.deletions}`)
+  const texts = data.hunks[0].lines.map((line) => line.text)
+  assert.ok(texts.some((text) => text.includes('main-change')), '差异里应有 ours 侧内容')
+  assert.ok(texts.some((text) => text.includes('topic-change')), '差异里应有 theirs 侧内容')
+})

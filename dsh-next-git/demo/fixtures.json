@@ -476,6 +476,260 @@
       ],
       "truncated": false,
       "raw": "diff --git a/DESIGN.md b/DESIGN.md\nnew file mode 100644\nindex 0000000..e60f7ca\n--- /dev/null\n+++ b/DESIGN.md\n@@ -0,0 +1 @@\n+# 设计草稿\n"
+    },
+    "worktree:src/sum.js": {
+      "mode": "conflict",
+      "path": "src/sum.js",
+      "conflict": true,
+      "oursExists": true,
+      "theirsExists": true,
+      "binary": false,
+      "additions": 3,
+      "deletions": 2,
+      "hunks": [
+        {
+          "header": "@@ -1,4 +1,5 @@",
+          "lines": [
+            {
+              "kind": "ctx",
+              "text": "export function sum(items) {",
+              "old": 1,
+              "new": 1
+            },
+            {
+              "kind": "del",
+              "text": "  // 当前分支：跳过非数字，避免 NaN 传染",
+              "old": 2,
+              "inline": [
+                {
+                  "text": "  ",
+                  "changed": false
+                },
+                {
+                  "text": "//",
+                  "changed": true
+                },
+                {
+                  "text": " ",
+                  "changed": false
+                },
+                {
+                  "text": "当前分支：跳过非数字，避免",
+                  "changed": true
+                },
+                {
+                  "text": " ",
+                  "changed": false
+                },
+                {
+                  "text": "NaN",
+                  "changed": true
+                },
+                {
+                  "text": " ",
+                  "changed": false
+                },
+                {
+                  "text": "传染",
+                  "changed": true
+                }
+              ]
+            },
+            {
+              "kind": "del",
+              "text": "  return items.reduce((acc, n) => acc + (Number.isFinite(n) ? n : 0), 0)",
+              "old": 3,
+              "inline": [
+                {
+                  "text": "  ",
+                  "changed": false
+                },
+                {
+                  "text": "return",
+                  "changed": true
+                },
+                {
+                  "text": " ",
+                  "changed": false
+                },
+                {
+                  "text": "items.reduce((acc,",
+                  "changed": true
+                },
+                {
+                  "text": " n",
+                  "changed": false
+                },
+                {
+                  "text": ")",
+                  "changed": true
+                },
+                {
+                  "text": " ",
+                  "changed": false
+                },
+                {
+                  "text": "=> acc +",
+                  "changed": true
+                },
+                {
+                  "text": " ",
+                  "changed": false
+                },
+                {
+                  "text": "(Number.isFinite(n",
+                  "changed": true
+                },
+                {
+                  "text": ") ",
+                  "changed": false
+                },
+                {
+                  "text": "? n :",
+                  "changed": true
+                },
+                {
+                  "text": " ",
+                  "changed": false
+                },
+                {
+                  "text": "0),",
+                  "changed": true
+                },
+                {
+                  "text": " ",
+                  "changed": false
+                },
+                {
+                  "text": "0)",
+                  "changed": true
+                }
+              ]
+            },
+            {
+              "kind": "add",
+              "text": "  let total = 0",
+              "new": 2,
+              "inline": [
+                {
+                  "text": "  ",
+                  "changed": false
+                },
+                {
+                  "text": "let",
+                  "changed": true
+                },
+                {
+                  "text": " ",
+                  "changed": false
+                },
+                {
+                  "text": "total",
+                  "changed": true
+                },
+                {
+                  "text": " ",
+                  "changed": false
+                },
+                {
+                  "text": "=",
+                  "changed": true
+                },
+                {
+                  "text": " ",
+                  "changed": false
+                },
+                {
+                  "text": "0",
+                  "changed": true
+                }
+              ]
+            },
+            {
+              "kind": "add",
+              "text": "  for (const n of items) total += n",
+              "new": 3,
+              "inline": [
+                {
+                  "text": "  ",
+                  "changed": false
+                },
+                {
+                  "text": "for",
+                  "changed": true
+                },
+                {
+                  "text": " ",
+                  "changed": false
+                },
+                {
+                  "text": "(const",
+                  "changed": true
+                },
+                {
+                  "text": " n ",
+                  "changed": false
+                },
+                {
+                  "text": "of",
+                  "changed": true
+                },
+                {
+                  "text": " ",
+                  "changed": false
+                },
+                {
+                  "text": "items",
+                  "changed": true
+                },
+                {
+                  "text": ") ",
+                  "changed": false
+                },
+                {
+                  "text": "total",
+                  "changed": true
+                },
+                {
+                  "text": " ",
+                  "changed": false
+                },
+                {
+                  "text": "+=",
+                  "changed": true
+                },
+                {
+                  "text": " ",
+                  "changed": false
+                },
+                {
+                  "text": "n",
+                  "changed": true
+                }
+              ]
+            },
+            {
+              "kind": "add",
+              "text": "  return total",
+              "new": 4
+            },
+            {
+              "kind": "ctx",
+              "text": "}",
+              "old": 4,
+              "new": 5
+            },
+            {
+              "kind": "ctx",
+              "text": "",
+              "old": 5,
+              "new": 6
+            }
+          ]
+        }
+      ],
+      "truncated": false,
+      "raw": "diff --git a/32b6448e7c9459e3946e220805aa4de9d526c5d0 b/bf7eef7cc4a3712290f2c8f3b792c0ba4a4445d2\nindex 32b6448..bf7eef7 100644\n--- a/32b6448e7c9459e3946e220805aa4de9d526c5d0\n+++ b/bf7eef7cc4a3712290f2c8f3b792c0ba4a4445d2\n@@ -1,4 +1,5 @@\n export function sum(items) {\n-  // 当前分支：跳过非数字，避免 NaN 传染\n-  return items.reduce((acc, n) => acc + (Number.isFinite(n) ? n : 0), 0)\n+  let total = 0\n+  for (const n of items) total += n\n+  return total\n }\n"
     }
   },
   "commitDiffs": {
@@ -773,9 +1027,9 @@
       "oursExists": true,
       "theirsExists": true,
       "base": "export function sum(items) {\n  return items.reduce((acc, n) => acc + n, 0)\n}\n",
-      "ours": "export function sum(items) {\n  return items.reduce((acc, n) => acc + n, 0)\n}\n",
+      "ours": "export function sum(items) {\n  // 当前分支：跳过非数字，避免 NaN 传染\n  return items.reduce((acc, n) => acc + (Number.isFinite(n) ? n : 0), 0)\n}\n",
       "theirs": "export function sum(items) {\n  let total = 0\n  for (const n of items) total += n\n  return total\n}\n",
-      "suggested": "export function sum(items) {\n  // 两边实现等价，保留更易读的 reduce 版本\n  return items.reduce((acc, n) => acc + n, 0)\n}\n",
+      "suggested": "export function sum(items) {\n  // 保留当前分支的有限性检查，用合入分支的循环写法\n  let total = 0\n  for (const n of items) {\n    if (Number.isFinite(n)) total += n\n  }\n  return total\n}\n",
       "model": "demo/recorded"
     }
   }

@@ -542,3 +542,66 @@ test('takeSide：side 只能是 ours / theirs', async () => {
     (error) => error instanceof GitError && error.code === 'invalid-params',
   )
 })
+test('diff：冲突文件走两个 stage 的 blob diff，能解析出 hunk', async () => {
+  // 回归：git diff 未合并路径给的是 combined diff（diff --cc / @@@），
+  // 旧实现直接解析它，hunks 恒为 0，面板一片空白。
+  const unified = [
+    'diff --git a/bbbb2222 b/cccc3333',
+    '--- a/bbbb2222',
+    '+++ b/cccc3333',
+    '@@ -1,3 +1,3 @@',
+    ' line1',
+    '-ours',
+    '+theirs',
+    ' line3',
+    '',
+  ].join('\n')
+  const routes = [
+    [['rev-parse', '--show-toplevel'], ok(ROOT + '\n')],
+    [['ls-files', '-u', '-z', '--', 'a.txt'], ok(CONFLICT_LS)],
+    [['diff', '--no-color', 'bbbb2222', 'cccc3333'], ok(unified)],
+  ]
+  const { exec, calls } = makeExec(routes)
+  const ops = createOperations({ exec })
+  const data = await ops.handle('diff', { cwd: CWD, mode: 'worktree', path: 'a.txt' })
+  assert.equal(data.conflict, true)
+  assert.equal(data.mode, 'conflict')
+  assert.equal(data.hunks.length, 1)
+  assert.equal(data.additions, 1)
+  assert.equal(data.deletions, 1)
+  // 末尾的 ctx 是 unified diff 尾随换行产生的空上下文行，解析器一直保留它
+  const kinds = data.hunks[0].lines.map((line) => line.kind)
+  assert.deepEqual(kinds, ['ctx', 'del', 'add', 'ctx', 'ctx'])
+  const issued = calls.map((call) => call.args.join(' '))
+  assert.ok(issued.includes('diff --no-color bbbb2222 cccc3333'), '应 diff 两个 stage blob')
+  assert.ok(!issued.some((cmd) => cmd === 'diff --no-color -- a.txt'), '不应再走普通 worktree diff')
+})
+
+test('diff：一侧被删除的冲突只回元数据，不报错', async () => {
+  const onlyTheirs = ['100644 cccc3333 3\ta.txt', ''].join('\u0000')
+  const routes = [
+    [['rev-parse', '--show-toplevel'], ok(ROOT + '\n')],
+    [['ls-files', '-u', '-z', '--', 'a.txt'], ok(onlyTheirs)],
+  ]
+  const { exec } = makeExec(routes)
+  const ops = createOperations({ exec })
+  const data = await ops.handle('diff', { cwd: CWD, mode: 'worktree', path: 'a.txt' })
+  assert.equal(data.conflict, true)
+  assert.equal(data.oursExists, false)
+  assert.equal(data.theirsExists, true)
+  assert.equal(data.hunks.length, 0)
+})
+
+test('diff：普通文件仍然走 git diff -- path', async () => {
+  const routes = [
+    [['rev-parse', '--show-toplevel'], ok(ROOT + '\n')],
+    [['ls-files', '-u', '-z', '--', 'a.txt'], ok('')],
+    [['diff', '--no-color', '--', 'a.txt'], ok('')],
+  ]
+  const { exec, calls } = makeExec(routes)
+  const ops = createOperations({ exec })
+  const data = await ops.handle('diff', { cwd: CWD, mode: 'worktree', path: 'a.txt' })
+  assert.equal(data.conflict, undefined)
+  assert.equal(data.mode, 'worktree')
+  assert.ok(calls.map((call) => call.args.join(' ')).includes('diff --no-color -- a.txt'))
+})

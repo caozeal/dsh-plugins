@@ -520,6 +520,16 @@ async function main() {
       assert(/topic-a/.test(data.theirs), 'theirs 内容不含 topic-a')
       return 'base/ours/theirs 齐全'
     })
+    await check('diff 冲突文件 → 能解析出 hunk（非 combined diff）', async () => {
+      const data = await rpcOk('diff', { mode: 'worktree', path: 'a.txt' }, conflictRepo)
+      assert(data.conflict === true, `conflict=${JSON.stringify(data.conflict)}`)
+      assert(data.mode === 'conflict', `mode=${data.mode}`)
+      assert(Array.isArray(data.hunks) && data.hunks.length > 0, 'hunks 为空（又退回 combined diff 了）')
+      const texts = data.hunks[0].lines.map((line) => line.text)
+      assert(texts.some((text) => text.includes('main-a')), '差异里没有 ours 侧内容')
+      assert(texts.some((text) => text.includes('topic-a')), '差异里没有 theirs 侧内容')
+      return `${data.hunks.length} 个 hunk，+${data.additions} -${data.deletions}`
+    })
     await check('applyConflict → 写回内容并清掉冲突条目', async () => {
       const content = 'one\nmerged-a\nthree\n'
       const data = await rpcOk('applyConflict', { path: 'a.txt', content }, conflictRepo)

@@ -289,6 +289,14 @@ export function createOperations(deps) {
     }
     const path = typeof params.path === 'string' && params.path !== '' ? params.path : ''
     const safePath = path !== '' && path.startsWith('-') ? `./${path}` : path
+    // 未合并的文件不能走普通 git diff：它给的是 combined diff（diff --cc / @@@ / ++ 前缀），
+    // 不是 unified diff，解析器读不出 hunk，面板会是空的。改成 diff 两个 stage 的 blob。
+    if (mode === 'worktree' && safePath !== '') {
+      const stages = await conflictStages(root, safePath, signal)
+      if (Object.keys(stages).length > 0) {
+        return await conflictDiff(root, safePath, stages, signal)
+      }
+    }
     /** @type {string[]} */
     let args
     if (mode === 'worktree') {
@@ -592,6 +600,49 @@ export function createOperations(deps) {
     if (!hash) return null
     const res = await runGit(['cat-file', '-p', hash], { cwd: root, signal, allowFailure: true })
     return res.code === 0 ? res.stdout : null
+  }
+
+  /**
+   * 冲突文件的差异视图：当前分支（:2:）↔ 合入分支（:3:）。
+   * 直接 `git diff <blob> <blob>` 是合法的，拿到的是普通 unified diff，行级高亮照样能用。
+   * 某一侧没有这个文件（删除/改名冲突）时没有可比的两份内容，只回元数据让面板说明情况。
+   */
+  async function conflictDiff(root, path, stages, signal) {
+    const oursHash = stages[2]
+    const theirsHash = stages[3]
+    const base = {
+      mode: 'conflict',
+      path,
+      conflict: true,
+      oursExists: Boolean(oursHash),
+      theirsExists: Boolean(theirsHash),
+      binary: false,
+      additions: 0,
+      deletions: 0,
+      hunks: [],
+      truncated: false,
+      raw: '',
+    }
+    if (!oursHash || !theirsHash) return base
+    const args = ['diff', '--no-color', oursHash, theirsHash]
+    const result = await runGit(args, { cwd: root, signal, allowFailure: true })
+    if (result.code !== 0 && result.code !== 1) throw gitFailure(['git', ...args], result)
+    let raw = result.stdout
+    let truncated = false
+    if (raw.length > DIFF_MAX_CHARS) {
+      raw = raw.slice(0, DIFF_MAX_CHARS)
+      truncated = true
+    }
+    const parsed = parseUnifiedDiff(raw)
+    return {
+      ...base,
+      binary: parsed.binary,
+      additions: parsed.additions,
+      deletions: parsed.deletions,
+      hunks: parsed.hunks,
+      truncated,
+      raw,
+    }
   }
 
   /** 还剩几个未解决冲突（applyConflict / takeSide 之后用它回执）。 */
