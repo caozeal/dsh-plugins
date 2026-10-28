@@ -11,6 +11,8 @@ on:
     branches: [main]
     paths:
       - 'video/**'
+      - 'dsh-next-git/demo/**'
+      - 'dsh-next-git/lib/client.js'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -69,6 +71,24 @@ jobs:
             -movflags +faststart "$RUNNER_TEMP/site/video/out/dsh-next-git-promo-mockup.mp4"
 
           cp "$RUNNER_TEMP/silent.mp4" "$RUNNER_TEMP/site/video/out/dsh-next-git-promo-silent.mp4"
+
+      # Demo 是纯静态的，直接拷进站点根；它按 ../lib/client.js 引用真实插件代码，
+      # 所以要保持 dsh-next-git/{demo,lib} 的相对层级。
+      - name: Copy interactive demo
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/site/dsh-next-git"
+          cp -R dsh-next-git/demo "$RUNNER_TEMP/site/dsh-next-git/demo"
+          mkdir -p "$RUNNER_TEMP/site/dsh-next-git/lib"
+          cp dsh-next-git/lib/client.js "$RUNNER_TEMP/site/dsh-next-git/lib/client.js"
+
+      - name: Verify demo assets
+        run: |
+          set -euo pipefail
+          for f in index.html host-shim.js boot.js fixtures.json; do
+            test -f "$RUNNER_TEMP/site/dsh-next-git/demo/$f" || { echo "::error::缺少 demo/$f"; exit 1; }
+          done
+          test -f "$RUNNER_TEMP/site/dsh-next-git/lib/client.js" || { echo "::error::缺少 lib/client.js"; exit 1; }
 
       - uses: actions/upload-pages-artifact@v4
         with:

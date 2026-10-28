@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>dsh-next-git 在线 Demo</title>
+<meta name="description" content="DSH Git 管理插件的可交互演示：真实面板代码 + 真实仓库快照数据。" />
+<style>
+  /* 平台主题 token（取自 @deepseek-ai/dsh-client-ui-theme，浅色主题）。
+     Demo 里没有宿主注入这些变量，所以在这里按原值补一份。 */
+  :root {
+    --dsw-alias-bg-base: #fff;
+    --dsw-alias-bg-layer-1: #fff;
+    --dsw-alias-bg-layer-2: #fff;
+    --dsw-alias-border-l1: #0000000a;
+    --dsw-alias-label-primary: #0f1115;
+    --dsw-alias-label-secondary: #61666b;
+    --dsw-alias-state-error-primary: #ec1313;
+    --dsw-alias-state-success-primary: #22c55e;
+    --dsw-alias-state-warn-primary: #f59e0b;
+    --dsw-alias-file-diff-added-bg: #e6f4e7;
+    --dsw-alias-file-diff-added-gutter: #edf7ed;
+    --dsw-alias-file-diff-added-marker: #01a241;
+    --dsw-alias-file-diff-deleted-bg: #fce6e2;
+    --dsw-alias-file-diff-deleted-gutter: #fdece9;
+    --dsw-alias-file-diff-deleted-marker: #ba2723;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --dsw-alias-bg-base: #151517;
+      --dsw-alias-bg-layer-1: #232324;
+      --dsw-alias-bg-layer-2: #2c2c2e;
+      --dsw-alias-border-l1: #ffffff0f;
+      --dsw-alias-label-primary: #f9fafb;
+      --dsw-alias-label-secondary: #cfd3d6;
+      --dsw-alias-state-error-primary: #f25a5a;
+      --dsw-alias-file-diff-added-bg: #1f3124;
+      --dsw-alias-file-diff-added-gutter: #132016;
+      --dsw-alias-file-diff-added-marker: #41c977;
+      --dsw-alias-file-diff-deleted-bg: #3c1f1b;
+      --dsw-alias-file-diff-deleted-gutter: #28130e;
+      --dsw-alias-file-diff-deleted-marker: #fa423e;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font: 14px/1.6 -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--dsw-alias-bg-base);
+    color: var(--dsw-alias-label-primary);
+    display: flex;
+    flex-direction: column;
+  }
+  .demo-bar {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 16px; flex: none;
+    border-bottom: 1px solid var(--dsw-alias-border-l1);
+    background: var(--dsw-alias-bg-layer-1);
+  }
+  .demo-bar h1 { font-size: 13px; font-weight: 600; margin: 0; }
+  .demo-bar .tag {
+    font-size: 11px; padding: 2px 7px; border-radius: 5px;
+    background: color-mix(in srgb, #4d6bfe 12%, transparent);
+    color: #4d6bfe; font-weight: 600;
+  }
+  .demo-bar .spacer { flex: 1; }
+  .demo-bar .note { font-size: 12px; color: var(--dsw-alias-label-secondary); }
+  .demo-bar button {
+    font: inherit; font-size: 12px; cursor: pointer;
+    padding: 5px 11px; border-radius: 7px;
+    border: 1px solid var(--dsw-alias-border-l1);
+    background: var(--dsw-alias-bg-layer-2);
+    color: var(--dsw-alias-label-primary);
+  }
+  .demo-bar button:hover { border-color: #4d6bfe; color: #4d6bfe; }
+  /* 面板是给「右栏」设计的，需要足够高度才看得出层次；
+     这里给它一个固定的真实高度（约等于 1440p 屏幕上展开的右栏），
+     视口不够高就让整页滚动，而不是把面板压扁。 */
+  .demo-stage {
+    flex: 1; display: flex; justify-content: center; align-items: flex-start;
+    padding: 18px;
+  }
+  .demo-window {
+    width: 100%; max-width: 1040px;
+    /* 面板本来就是为「高右栏」设计的：文件列表 + 状态条 + 提交框要同时在场，
+       压到 500px 就会把列表挤成一行。这里固定给足高度，视口不够就让整页滚动
+       ——这是展示型页面，滚动比压缩更可读。 */
+    height: 760px;
+    display: flex; flex-direction: column;
+    border: 1px solid var(--dsw-alias-border-l1);
+    border-radius: 12px; overflow: hidden;
+    background: var(--dsw-alias-bg-base);
+    box-shadow: 0 12px 40px -18px rgba(0, 0, 0, .3);
+  }
+  .demo-chrome {
+    display: flex; align-items: center; gap: 7px; flex: none;
+    padding: 9px 13px;
+    border-bottom: 1px solid var(--dsw-alias-border-l1);
+    background: var(--dsw-alias-bg-layer-1);
+  }
+  .demo-dot { width: 9px; height: 9px; border-radius: 50%; }
+  .demo-chrome .title {
+    margin-left: 6px; font-size: 12px; font-weight: 600;
+    color: var(--dsw-alias-label-secondary);
+  }
+  .demo-body { flex: 1; min-height: 0; display: flex; }
+  /* 左半边做一个很淡的「会话」背景，说明这是会话侧边栏里的面板 */
+  .demo-chat {
+    flex: 1; min-width: 0; padding: 20px 22px;
+    display: flex; flex-direction: column; gap: 12px;
+    background: var(--dsw-alias-bg-base);
+    color: var(--dsw-alias-label-secondary); font-size: 13px;
+  }
+  .demo-chat .bubble {
+    padding: 10px 13px; border-radius: 10px; max-width: 86%;
+    background: var(--dsw-alias-bg-layer-2);
+    border: 1px solid var(--dsw-alias-border-l1);
+  }
+  .demo-chat .bubble.me { align-self: flex-end; background: color-mix(in srgb, #4d6bfe 8%, transparent); }
+  .demo-pane {
+    width: 480px; flex: none; min-height: 0;
+    border-left: 1px solid var(--dsw-alias-border-l1);
+    display: flex; flex-direction: column;
+  }
+  .demo-pane .pane-head {
+    flex: none; display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--dsw-alias-border-l1);
+    font-size: 12px; font-weight: 600;
+    color: var(--dsw-alias-label-secondary);
+    background: var(--dsw-alias-bg-layer-1);
+  }
+  .demo-pane .pane-body { flex: 1; min-height: 0; }
+  #panel-root { height: 100%; }
+  #panel-root > .gm-root { height: 100%; }
+  .demo-foot {
+    max-width: 1040px; margin: 0 auto; padding: 0 22px 26px;
+    font-size: 12px; line-height: 1.75; color: var(--dsw-alias-label-secondary);
+  }
+  .demo-foot code {
+    background: var(--dsw-alias-bg-layer-2); padding: 1px 5px; border-radius: 4px;
+    font-size: 11px;
+  }
+  .demo-fallback {
+    padding: 24px; color: var(--dsw-alias-label-secondary); font-size: 13px;
+  }
+  .demo-fallback code {
+    background: var(--dsw-alias-bg-layer-2); padding: 1px 5px; border-radius: 4px;
+  }
+  @media (max-width: 860px) {
+    .demo-chat { display: none; }
+    .demo-pane { width: 100%; border-left: 0; }
+    .demo-stage { padding: 0; }
+    .demo-window { border-radius: 0; border: 0; height: auto; min-height: 0; }
+    .demo-pane { height: 720px; }
+  }
+</style>
+</head>
+<body>
+  <div class="demo-bar">
+    <h1>dsh-next-git</h1>
+    <span class="tag">在线 Demo</span>
+    <span class="note">跑的是 npm 上那份真实面板代码，数据来自一个真实仓库的录制快照；点左侧文件看词级 diff，点「提交图」看彩色分支线</span>
+    <span class="spacer"></span>
+    <button id="toggle-locale" type="button">English</button>
+  </div>
+
+  <div class="demo-stage">
+    <div class="demo-window">
+      <div class="demo-chrome">
+        <span class="demo-dot" style="background:#ff5f57"></span>
+        <span class="demo-dot" style="background:#febc2e"></span>
+        <span class="demo-dot" style="background:#28c840"></span>
+        <span class="title">whale-notes — 会话「给 parser 加上限保护」</span>
+      </div>
+      <div class="demo-body">
+        <div class="demo-chat">
+          <div class="bubble me">给 parser 加一个 token 上限，别让超长输入把内存吃满。</div>
+          <div class="bubble">已经在 <code>src/parser.js</code> 里加了 <code>MAX_TOKENS = 4096</code>，
+并把结果截断到该上限。要我把这次改动提交吗？</div>
+          <div class="bubble me">先别提交，我自己看一眼 diff。</div>
+          <div class="bubble">好，右侧 Git 面板里可以直接看到这次的改动。</div>
+        </div>
+        <div class="demo-pane">
+          <div class="pane-head">Git 管理</div>
+          <div class="pane-body"><div id="panel-root"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="demo-foot">
+    这个页面没有重写 UI：它加载的是插件发布包里同一份 <code>lib/client.js</code>，
+    只补了一个最小的假宿主（<code>demo/host-shim.js</code>，约 200 行）来提供
+    slot / locale / sessions 服务，并把 <code>POST /api/git-manager</code> 换成预录数据。
+    所以这里看到的渲染、配色、交互就是装好插件后的样子。
+  </p>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="./host-shim.js"></script>
+  <script src="../lib/client.js"></script>
+  <script src="./boot.js"></script>
+</body>
+</html>

@@ -38,6 +38,17 @@ function card(c) {
     </section>`;
 }
 
+const DEMO_CSS = `
+    .cta { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 18px; }
+    .btn {
+      display: inline-block; padding: 10px 20px; border-radius: 9px;
+      background: #4d6bfe; color: #fff !important; font-weight: 600;
+      text-decoration: none !important; font-size: 14px;
+    }
+    .btn:hover { background: #2f49d6; }
+    .cta-note { font-size: 13px; color: #8a9099; }
+  `;
+
 const html = `<!doctype html>
 <html lang="zh-CN">
 <head>
@@ -46,6 +57,7 @@ const html = `<!doctype html>
 <title>dsh-next-git 宣传片</title>
 <meta name="description" content="DeepSeek Harness 侧栏 Git 管理插件 dsh-next-git 的 38 秒介绍片" />
 <style>
+  ${DEMO_CSS}
   :root {
     --bg: #050d24; --panel: #0d1733; --line: #21325c;
     --fg: #e7efff; --dim: #93a9cf; --accent: #4f7cff;
@@ -86,6 +98,10 @@ const html = `<!doctype html>
         <a href="https://github.com/caozeal/dsh-plugins">源码</a> ·
         <a href="https://www.npmjs.com/package/@caozeal/dsh-next-git">npm</a> ·
         <code>dsh plugin --profile web add @caozeal/dsh-next-git</code>
+      </p>
+      <p class="cta">
+        <a class="btn" href="./dsh-next-git/demo/">打开在线 Demo →</a>
+        <span class="cta-note">真实面板代码 + 真实仓库快照，可以直接点</span>
       </p>
     </header>
     ${CLIPS.map(card).join('\n')}

@@ -10,6 +10,10 @@ https://github.com/user-attachments/assets/c57169b4-df00-450d-b4f0-7a2c64db03b6
 
 *全片界面为渲染示意，不含真实会话；[完整播放页](https://dsh-next-git.1017835747.workers.dev/) 另有下载版。*
 
+**不想先装再看？** [在线 Demo](https://caozeal.github.io/dsh-plugins/dsh-next-git/demo/) 可以直接点——
+它加载的是发布包里同一份 `lib/client.js`，只补了一个最小假宿主和一份真实仓库的录制快照
+（详见 [`demo/README.md`](https://github.com/caozeal/dsh-plugins/blob/main/dsh-next-git/demo/README.md)）。写操作在 Demo 里是禁用的，会明确提示。
+
 在 DSH Web GUI **会话的右侧边栏**加一个 Git tab（2026-10-22 从左侧全局面板迁移而来）：
 会话头部点 **Git 图标**直接打开（会自动展开右栏），或在右栏的「+ → 开始」指南页里
 选「Git 管理」。面板内容：

@@ -1,0 +1,756 @@
+{
+  "snapshot": {
+    "repo": {
+      "isRepo": true,
+      "root": "/private/tmp/whale-notes",
+      "name": "whale-notes",
+      "branch": "main",
+      "detached": false,
+      "head": "edaa5c1",
+      "upstream": null,
+      "upstreamGone": false,
+      "ahead": 0,
+      "behind": 0,
+      "remoteUrl": null
+    },
+    "branches": [
+      {
+        "name": "feat/streaming",
+        "kind": "local",
+        "current": false,
+        "upstream": null,
+        "ahead": 0,
+        "behind": 0,
+        "gone": false,
+        "commit": "6991e32",
+        "subject": "feat: 支持分块回调",
+        "date": "2026-10-28 11:13:56 +0800"
+      },
+      {
+        "name": "fix/empty-input",
+        "kind": "local",
+        "current": false,
+        "upstream": null,
+        "ahead": 0,
+        "behind": 0,
+        "gone": false,
+        "commit": "6422b11",
+        "subject": "fix: 空输入崩溃",
+        "date": "2026-10-28 11:13:56 +0800"
+      },
+      {
+        "name": "main",
+        "kind": "local",
+        "current": true,
+        "upstream": null,
+        "ahead": 0,
+        "behind": 0,
+        "gone": false,
+        "commit": "edaa5c1",
+        "subject": "merge: 合入空输入修复",
+        "date": "2026-10-28 11:13:56 +0800"
+      }
+    ],
+    "remotes": [],
+    "status": {
+      "clean": false,
+      "staged": [
+        {
+          "path": "src/build.js",
+          "status": "A",
+          "oldPath": null
+        }
+      ],
+      "unstaged": [
+        {
+          "path": "src/parser.js",
+          "status": "M",
+          "oldPath": null
+        }
+      ],
+      "untracked": [
+        {
+          "path": "DESIGN.md",
+          "status": "?",
+          "oldPath": null
+        }
+      ],
+      "conflicted": []
+    },
+    "stashes": []
+  },
+  "graph": {
+    "lines": [
+      {
+        "graph": "*   ",
+        "hash": "edaa5c1",
+        "full": "edaa5c11e8c22f4df559684e99effe22d0fd6f4b",
+        "refs": [
+          "HEAD -> main"
+        ],
+        "author": "Whale Dev",
+        "date": "2 minutes ago",
+        "subject": "merge: 合入空输入修复",
+        "colors": [
+          0,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1
+        ],
+        "refColor": 0
+      },
+      {
+        "graph": "|\\  ",
+        "hash": null,
+        "full": null,
+        "refs": [],
+        "author": "",
+        "date": "",
+        "subject": "",
+        "colors": [
+          0,
+          0,
+          -1,
+          -1,
+          -1,
+          -1
+        ]
+      },
+      {
+        "graph": "| * ",
+        "hash": "6422b11",
+        "full": "6422b117baf1df576eb010606405c93c6c07707c",
+        "refs": [
+          "fix/empty-input"
+        ],
+        "author": "Whale Dev",
+        "date": "2 minutes ago",
+        "subject": "fix: 空输入崩溃",
+        "colors": [
+          0,
+          -1,
+          1,
+          -1,
+          -1,
+          -1
+        ],
+        "refColor": 1
+      },
+      {
+        "graph": "* |   ",
+        "hash": "6b5c791",
+        "full": "6b5c791addb5213fb663b34bdc593695d735a4cd",
+        "refs": [],
+        "author": "Whale Dev",
+        "date": "2 minutes ago",
+        "subject": "merge: 合入流式解析",
+        "colors": [
+          0,
+          -1,
+          1,
+          -1,
+          -1,
+          -1
+        ]
+      },
+      {
+        "graph": "|\\ \\  ",
+        "hash": null,
+        "full": null,
+        "refs": [],
+        "author": "",
+        "date": "",
+        "subject": "",
+        "colors": [
+          0,
+          0,
+          -1,
+          1,
+          -1,
+          -1
+        ]
+      },
+      {
+        "graph": "| |/  ",
+        "hash": null,
+        "full": null,
+        "refs": [],
+        "author": "",
+        "date": "",
+        "subject": "",
+        "colors": [
+          0,
+          -1,
+          1,
+          1,
+          -1,
+          -1
+        ]
+      },
+      {
+        "graph": "|/|   ",
+        "hash": null,
+        "full": null,
+        "refs": [],
+        "author": "",
+        "date": "",
+        "subject": "",
+        "colors": [
+          0,
+          1,
+          1,
+          -1,
+          -1,
+          -1
+        ]
+      },
+      {
+        "graph": "| * ",
+        "hash": "6991e32",
+        "full": "6991e32a750045beb7269944debb30bc6051f0f4",
+        "refs": [
+          "feat/streaming"
+        ],
+        "author": "Whale Dev",
+        "date": "2 minutes ago",
+        "subject": "feat: 支持分块回调",
+        "colors": [
+          0,
+          -1,
+          2,
+          -1,
+          -1,
+          -1
+        ],
+        "refColor": 2
+      },
+      {
+        "graph": "| * ",
+        "hash": "d2a71bc",
+        "full": "d2a71bc4bf3c2bb03e6efd14b383bd3fb635c830",
+        "refs": [],
+        "author": "Whale Dev",
+        "date": "2 minutes ago",
+        "subject": "feat: 流式解析入口",
+        "colors": [
+          0,
+          -1,
+          2,
+          -1,
+          -1,
+          -1
+        ]
+      },
+      {
+        "graph": "|/  ",
+        "hash": null,
+        "full": null,
+        "refs": [],
+        "author": "",
+        "date": "",
+        "subject": "",
+        "colors": [
+          0,
+          1,
+          -1,
+          -1,
+          -1,
+          -1
+        ]
+      },
+      {
+        "graph": "* ",
+        "hash": "9f7fbc4",
+        "full": "9f7fbc46d3ffc65ccfd49c4a11fe514bcb37ec7c",
+        "refs": [],
+        "author": "Whale Dev",
+        "date": "2 minutes ago",
+        "subject": "feat: 加版本号常量",
+        "colors": [
+          0,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1
+        ]
+      },
+      {
+        "graph": "* ",
+        "hash": "cb21601",
+        "full": "cb21601acfacf96b8573a92c11d2d562e4667729",
+        "refs": [],
+        "author": "Whale Dev",
+        "date": "2 minutes ago",
+        "subject": "init: 项目骨架",
+        "colors": [
+          0,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1
+        ]
+      }
+    ],
+    "truncated": false
+  },
+  "diffs": {
+    "worktree:src/parser.js": {
+      "mode": "worktree",
+      "path": "src/parser.js",
+      "binary": false,
+      "additions": 3,
+      "deletions": 1,
+      "hunks": [
+        {
+          "header": "@@ -1,7 +1,9 @@",
+          "lines": [
+            {
+              "kind": "ctx",
+              "text": "const TOKEN = /[a-z]+/gi",
+              "old": 1,
+              "new": 1
+            },
+            {
+              "kind": "add",
+              "text": "const MAX_TOKENS = 4096",
+              "new": 2
+            },
+            {
+              "kind": "ctx",
+              "text": "",
+              "old": 2,
+              "new": 3
+            },
+            {
+              "kind": "ctx",
+              "text": "function parse(input) {",
+              "old": 3,
+              "new": 4
+            },
+            {
+              "kind": "del",
+              "text": "  return String(input).match(TOKEN) || []",
+              "old": 4,
+              "inline": [
+                {
+                  "text": "  ",
+                  "changed": false
+                },
+                {
+                  "text": "return",
+                  "changed": true
+                },
+                {
+                  "text": " String(input).match(TOKEN) || []",
+                  "changed": false
+                }
+              ]
+            },
+            {
+              "kind": "add",
+              "text": "  const matches = String(input).match(TOKEN) || []",
+              "new": 5,
+              "inline": [
+                {
+                  "text": "  ",
+                  "changed": false
+                },
+                {
+                  "text": "const",
+                  "changed": true
+                },
+                {
+                  "text": " ",
+                  "changed": false
+                },
+                {
+                  "text": "matches = ",
+                  "changed": true
+                },
+                {
+                  "text": "String(input).match(TOKEN) || []",
+                  "changed": false
+                }
+              ]
+            },
+            {
+              "kind": "add",
+              "text": "  return matches.slice(0, MAX_TOKENS)",
+              "new": 6
+            },
+            {
+              "kind": "ctx",
+              "text": "}",
+              "old": 5,
+              "new": 7
+            },
+            {
+              "kind": "ctx",
+              "text": "",
+              "old": 6,
+              "new": 8
+            },
+            {
+              "kind": "ctx",
+              "text": "module.exports = { parse }",
+              "old": 7,
+              "new": 9
+            },
+            {
+              "kind": "ctx",
+              "text": "",
+              "old": 8,
+              "new": 10
+            }
+          ]
+        }
+      ],
+      "truncated": false,
+      "raw": "diff --git a/src/parser.js b/src/parser.js\nindex 9ac6c57..497f670 100644\n--- a/src/parser.js\n+++ b/src/parser.js\n@@ -1,7 +1,9 @@\n const TOKEN = /[a-z]+/gi\n+const MAX_TOKENS = 4096\n \n function parse(input) {\n-  return String(input).match(TOKEN) || []\n+  const matches = String(input).match(TOKEN) || []\n+  return matches.slice(0, MAX_TOKENS)\n }\n \n module.exports = { parse }\n"
+    },
+    "staged:src/build.js": {
+      "mode": "staged",
+      "path": "src/build.js",
+      "binary": false,
+      "additions": 1,
+      "deletions": 0,
+      "hunks": [
+        {
+          "header": "@@ -0,0 +1 @@",
+          "lines": [
+            {
+              "kind": "add",
+              "text": "export const BUILD = '2026-10-28'",
+              "new": 1
+            },
+            {
+              "kind": "ctx",
+              "text": "",
+              "old": 0,
+              "new": 2
+            }
+          ]
+        }
+      ],
+      "truncated": false,
+      "raw": "diff --git a/src/build.js b/src/build.js\nnew file mode 100644\nindex 0000000..1f40b86\n--- /dev/null\n+++ b/src/build.js\n@@ -0,0 +1 @@\n+export const BUILD = '2026-10-28'\n"
+    },
+    "untracked:DESIGN.md": {
+      "mode": "untracked",
+      "path": "DESIGN.md",
+      "binary": false,
+      "additions": 1,
+      "deletions": 0,
+      "hunks": [
+        {
+          "header": "@@ -0,0 +1 @@",
+          "lines": [
+            {
+              "kind": "add",
+              "text": "# 设计草稿",
+              "new": 1
+            },
+            {
+              "kind": "ctx",
+              "text": "",
+              "old": 0,
+              "new": 2
+            }
+          ]
+        }
+      ],
+      "truncated": false,
+      "raw": "diff --git a/DESIGN.md b/DESIGN.md\nnew file mode 100644\nindex 0000000..e60f7ca\n--- /dev/null\n+++ b/DESIGN.md\n@@ -0,0 +1 @@\n+# 设计草稿\n"
+    }
+  },
+  "commitDiffs": {
+    "edaa5c1": {
+      "mode": "commit",
+      "path": "",
+      "binary": false,
+      "additions": 0,
+      "deletions": 0,
+      "hunks": [],
+      "truncated": false,
+      "raw": ""
+    },
+    "6422b11": {
+      "mode": "commit",
+      "path": "",
+      "binary": false,
+      "additions": 6,
+      "deletions": 0,
+      "hunks": [
+        {
+          "header": "@@ -0,0 +1,6 @@",
+          "lines": [
+            {
+              "kind": "add",
+              "text": "function guard(value) {",
+              "new": 1
+            },
+            {
+              "kind": "add",
+              "text": "  if (value === null) return ''",
+              "new": 2
+            },
+            {
+              "kind": "add",
+              "text": "  return value",
+              "new": 3
+            },
+            {
+              "kind": "add",
+              "text": "}",
+              "new": 4
+            },
+            {
+              "kind": "add",
+              "text": "",
+              "new": 5
+            },
+            {
+              "kind": "add",
+              "text": "module.exports = { guard }",
+              "new": 6
+            },
+            {
+              "kind": "ctx",
+              "text": "",
+              "old": 0,
+              "new": 7
+            }
+          ]
+        }
+      ],
+      "truncated": false,
+      "raw": "diff --git a/src/guard.js b/src/guard.js\nnew file mode 100644\nindex 0000000..94accf1\n--- /dev/null\n+++ b/src/guard.js\n@@ -0,0 +1,6 @@\n+function guard(value) {\n+  if (value === null) return ''\n+  return value\n+}\n+\n+module.exports = { guard }\n"
+    },
+    "6b5c791": {
+      "mode": "commit",
+      "path": "",
+      "binary": false,
+      "additions": 0,
+      "deletions": 0,
+      "hunks": [],
+      "truncated": false,
+      "raw": ""
+    },
+    "6991e32": {
+      "mode": "commit",
+      "path": "",
+      "binary": false,
+      "additions": 2,
+      "deletions": 0,
+      "hunks": [
+        {
+          "header": "@@ -5,3 +5,5 @@ function streamParse(input) {",
+          "lines": [
+            {
+              "kind": "ctx",
+              "text": "}",
+              "old": 5,
+              "new": 5
+            },
+            {
+              "kind": "ctx",
+              "text": "",
+              "old": 6,
+              "new": 6
+            },
+            {
+              "kind": "ctx",
+              "text": "module.exports = { streamParse }",
+              "old": 7,
+              "new": 7
+            },
+            {
+              "kind": "add",
+              "text": "",
+              "new": 8
+            },
+            {
+              "kind": "add",
+              "text": "module.exports = { streamParse }",
+              "new": 9
+            },
+            {
+              "kind": "ctx",
+              "text": "",
+              "old": 8,
+              "new": 10
+            }
+          ]
+        }
+      ],
+      "truncated": false,
+      "raw": "diff --git a/src/stream.js b/src/stream.js\nindex c141315..a05ec9e 100644\n--- a/src/stream.js\n+++ b/src/stream.js\n@@ -5,3 +5,5 @@ function streamParse(input) {\n }\n \n module.exports = { streamParse }\n+\n+module.exports = { streamParse }\n"
+    },
+    "d2a71bc": {
+      "mode": "commit",
+      "path": "",
+      "binary": false,
+      "additions": 7,
+      "deletions": 0,
+      "hunks": [
+        {
+          "header": "@@ -0,0 +1,7 @@",
+          "lines": [
+            {
+              "kind": "add",
+              "text": "const { parse } = require('./parser')",
+              "new": 1
+            },
+            {
+              "kind": "add",
+              "text": "",
+              "new": 2
+            },
+            {
+              "kind": "add",
+              "text": "function streamParse(input) {",
+              "new": 3
+            },
+            {
+              "kind": "add",
+              "text": "  return parse(input)",
+              "new": 4
+            },
+            {
+              "kind": "add",
+              "text": "}",
+              "new": 5
+            },
+            {
+              "kind": "add",
+              "text": "",
+              "new": 6
+            },
+            {
+              "kind": "add",
+              "text": "module.exports = { streamParse }",
+              "new": 7
+            },
+            {
+              "kind": "ctx",
+              "text": "",
+              "old": 0,
+              "new": 8
+            }
+          ]
+        }
+      ],
+      "truncated": false,
+      "raw": "diff --git a/src/stream.js b/src/stream.js\nnew file mode 100644\nindex 0000000..c141315\n--- /dev/null\n+++ b/src/stream.js\n@@ -0,0 +1,7 @@\n+const { parse } = require('./parser')\n+\n+function streamParse(input) {\n+  return parse(input)\n+}\n+\n+module.exports = { streamParse }\n"
+    },
+    "9f7fbc4": {
+      "mode": "commit",
+      "path": "",
+      "binary": false,
+      "additions": 1,
+      "deletions": 0,
+      "hunks": [
+        {
+          "header": "@@ -0,0 +1 @@",
+          "lines": [
+            {
+              "kind": "add",
+              "text": "export const VERSION = '1.0.0'",
+              "new": 1
+            },
+            {
+              "kind": "ctx",
+              "text": "",
+              "old": 0,
+              "new": 2
+            }
+          ]
+        }
+      ],
+      "truncated": false,
+      "raw": "diff --git a/src/version.js b/src/version.js\nnew file mode 100644\nindex 0000000..5a52d11\n--- /dev/null\n+++ b/src/version.js\n@@ -0,0 +1 @@\n+export const VERSION = '1.0.0'\n"
+    },
+    "cb21601": {
+      "mode": "commit",
+      "path": "",
+      "binary": false,
+      "additions": 10,
+      "deletions": 0,
+      "hunks": [
+        {
+          "header": "@@ -0,0 +1,3 @@",
+          "lines": [
+            {
+              "kind": "add",
+              "text": "# whale-notes",
+              "new": 1
+            },
+            {
+              "kind": "add",
+              "text": "",
+              "new": 2
+            },
+            {
+              "kind": "add",
+              "text": "一个用来演示 Git 面板的小项目。",
+              "new": 3
+            }
+          ]
+        },
+        {
+          "header": "@@ -0,0 +1,7 @@",
+          "lines": [
+            {
+              "kind": "add",
+              "text": "const TOKEN = /[a-z]+/gi",
+              "new": 1
+            },
+            {
+              "kind": "add",
+              "text": "",
+              "new": 2
+            },
+            {
+              "kind": "add",
+              "text": "function parse(input) {",
+              "new": 3
+            },
+            {
+              "kind": "add",
+              "text": "  return String(input).match(TOKEN) || []",
+              "new": 4
+            },
+            {
+              "kind": "add",
+              "text": "}",
+              "new": 5
+            },
+            {
+              "kind": "add",
+              "text": "",
+              "new": 6
+            },
+            {
+              "kind": "add",
+              "text": "module.exports = { parse }",
+              "new": 7
+            },
+            {
+              "kind": "ctx",
+              "text": "",
+              "old": 0,
+              "new": 8
+            }
+          ]
+        }
+      ],
+      "truncated": false,
+      "raw": "diff --git a/README.md b/README.md\nnew file mode 100644\nindex 0000000..099cdaa\n--- /dev/null\n+++ b/README.md\n@@ -0,0 +1,3 @@\n+# whale-notes\n+\n+一个用来演示 Git 面板的小项目。\ndiff --git a/src/parser.js b/src/parser.js\nnew file mode 100644\nindex 0000000..9ac6c57\n--- /dev/null\n+++ b/src/parser.js\n@@ -0,0 +1,7 @@\n+const TOKEN = /[a-z]+/gi\n+\n+function parse(input) {\n+  return String(input).match(TOKEN) || []\n+}\n+\n+module.exports = { parse }\n"
+    }
+  },
+  "generatedAt": "2026-10-28T03:16:06.809Z"
+}
