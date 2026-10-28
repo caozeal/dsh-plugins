@@ -1,24 +1,33 @@
 # 把生成的站点发布到 https://dsh.caozeal.cn/next-git/
 #
 # 用法：
-#   node video/pages.mjs video/site      # 生成站点（含 demo/ 与 lib/）
+#   node video/pages.mjs video/site next-git   # 产物落到 video/site/next-git/
 #   npx wrangler deploy --config video/wrangler.toml
+#
+# 为什么是「纯静态资源 + 子目录」而不是「Worker 剥前缀」：
+# 最初用 main = worker.js + run_worker_first = true，让 Worker 把 /next-git 剥掉
+# 再交给 env.ASSETS；本地 wrangler dev 正常，但线上直接报 error code 1042
+# （Worker fetch 自己形成环）。改成把站点生成到 next-git/ 子目录、完全不要
+# Worker 脚本，路由交给静态资源按真实路径服务即可——零运行时逻辑，也不会环。
 #
 # 前置：dsh.caozeal.cn 需在 Cloudflare 里有一条 proxied（橙色云）的 DNS 记录，
 # zone caozeal.cn 已托管在 Cloudflare（NS: elly.ns.cloudflare.com）。
 
 name = "dsh-next-git-site"
-main = "worker.js"
 compatibility_date = "2026-10-28"
 
-# 静态资源；run_worker_first 必须为 true，否则已存在的资源会被直出、
-# 绕过 Worker，/next-git 前缀就剥不掉。
 [assets]
 directory = "./site"
-binding = "ASSETS"
-run_worker_first = true
+not_found_handling = "none"
 
-# 只接管这个子路径，域名下其它路径不受影响。
+# 两条路由缺一不可：
+#   /next-git   —— 精确路径，用户通常不带尾斜杠（通配符 /next-git/* 不匹配这条，
+#                  之前少了它，直接访问 /next-git 会落到域名根的 404）
+#   /next-git/* —— 子路径
+[[routes]]
+pattern = "dsh.caozeal.cn/next-git"
+zone_name = "caozeal.cn"
+
 [[routes]]
 pattern = "dsh.caozeal.cn/next-git/*"
 zone_name = "caozeal.cn"

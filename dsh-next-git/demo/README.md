@@ -80,5 +80,15 @@ node demo/check.mjs
 
 ## 部署
 
-`demo/` 是纯静态的，和宣传片播放页一起发到 GitHub Pages
-（见 `.github/workflows/pages.yml`）。React 走 unpkg CDN，其余零依赖。
+线上地址：**<https://dsh.caozeal.cn/next-git/demo/>**
+
+`demo/` 是纯静态的，和宣传片播放页一起由 `video/pages.mjs` 打进站点，
+再用 Cloudflare Workers 静态资源发布（见 `video/wrangler.toml` 与
+`.github/workflows/site.yml`）。站点挂在 `dsh.caozeal.cn/next-git/` 子路径下，
+所以生成时要带前缀参数：`node video/pages.mjs video/site next-git`。
+
+不挂 GitHub Pages 的原因：`caozeal.github.io` 仓库把 `www.caozeal.cn` 设为 Pages
+自定义域，而该域名实际由 nginx 服务，项目站点会被 301 过去必然 404；而且 Pages
+自定义域只能占域名根，不支持子路径。
+
+React 走 unpkg CDN，其余零依赖。

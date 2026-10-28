@@ -6,6 +6,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const OUT_DIR = process.argv[2] || 'site';
+// 挂载前缀：站点要挂在子路径下（如 dsh.caozeal.cn/next-git/）时，
+// 直接把产物生成到 <out>/<prefix>/，交给静态资源按真实路径服务，
+// 不需要 Worker 运行时再做前缀剥离（那样会和 assets 形成 fetch 环）。
+const PREFIX = (process.argv[3] || '').replace(/^\/+|\/+$/g, '');
+const ROOT_DIR = PREFIX ? path.join(OUT_DIR, PREFIX) : OUT_DIR;
 const VIDEO_DIR = 'video/out';
 
 const CLIPS = [
@@ -28,7 +33,7 @@ function card(c) {
   const src = `${VIDEO_DIR}/${c.file}`;
   // 成片是在 CI 里用 video/frames 现场合成的；frames 没入库时文件不存在，
   // 这时不要渲染一个必然 404 的 <video>，而是明确说明去哪拿。
-  const exists = fs.existsSync(path.join(OUT_DIR, src));
+  const exists = fs.existsSync(path.join(ROOT_DIR, src));
   if (!exists) {
     return `
     <section class="card${c.primary ? ' primary' : ''}">
@@ -135,8 +140,8 @@ const html = `<!doctype html>
 </html>
 `;
 
-fs.mkdirSync(OUT_DIR, { recursive: true });
-fs.writeFileSync(path.join(OUT_DIR, 'index.html'), html);
+fs.mkdirSync(ROOT_DIR, { recursive: true });
+fs.writeFileSync(path.join(ROOT_DIR, 'index.html'), html);
 
 // 把在线 Demo 一起打进站点。
 // Demo 按 ../lib/client.js 引用真实插件代码，所以要保持 dsh-next-git/{demo,lib} 的
@@ -146,8 +151,8 @@ fs.writeFileSync(path.join(OUT_DIR, 'index.html'), html);
 // 所以 Demo 直接放站点根：/next-git/demo/ 读 ../lib/client.js → /next-git/lib/client.js。
 const DEMO_SRC = 'dsh-next-git/demo';
 const CLIENT_SRC = 'dsh-next-git/lib/client.js';
-const DEMO_DEST = path.join(OUT_DIR, 'demo');
-const LIB_DEST = path.join(OUT_DIR, 'lib');
+const DEMO_DEST = path.join(ROOT_DIR, 'demo');
+const LIB_DEST = path.join(ROOT_DIR, 'lib');
 
 if (fs.existsSync(DEMO_SRC) && fs.existsSync(CLIENT_SRC)) {
   fs.mkdirSync(DEMO_DEST, { recursive: true });
@@ -166,16 +171,16 @@ if (fs.existsSync(DEMO_SRC) && fs.existsSync(CLIENT_SRC)) {
 // 海报：沿用仓库里的片头帧，Pages 站点根目录放一份
 const poster = 'video/docs/poster-title.png';
 if (fs.existsSync(poster)) {
-  fs.copyFileSync(poster, path.join(OUT_DIR, 'poster.png'));
+  fs.copyFileSync(poster, path.join(ROOT_DIR, 'poster.png'));
 } else {
   console.warn('warning: poster not found, video 元素会退回黑底');
 }
 
 // .nojekyll：避免 Pages 用 Jekyll 处理，也能保证二进制文件不被过滤
-fs.writeFileSync(path.join(OUT_DIR, '.nojekyll'), '');
+fs.writeFileSync(path.join(ROOT_DIR, '.nojekyll'), '');
 
 const total = CLIPS.reduce((acc, c) => {
   const p = path.join(VIDEO_DIR, c.file);
   return acc + (fs.existsSync(p) ? fs.statSync(p).size : 0);
 }, 0);
-console.log(`built ${OUT_DIR}/index.html (${CLIPS.length} clips, ${(total / 1048576).toFixed(1)} MB video referenced)`);
+console.log(`built ${ROOT_DIR}/index.html (${CLIPS.length} clips, ${(total / 1048576).toFixed(1)} MB video referenced)`);

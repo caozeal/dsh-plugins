@@ -55,8 +55,11 @@ dsh plugin --profile web add @caozeal/dsh-next-git
 
 https://github.com/user-attachments/assets/c57169b4-df00-450d-b4f0-7a2c64db03b6
 
-完整版（含无音轨版、可下载原片）：<https://dsh-next-git.1017835747.workers.dev/>
+完整版（含无音轨版、可下载原片）与**在线可玩 Demo**：<https://dsh.caozeal.cn/next-git/>
 分镜、素材来源与重新渲染方式见 [video/README.md](video/README.md)。
+
+Demo 加载的是 npm 包里同一份 `lib/client.js`，只补了一个最小假宿主和一份真实仓库的
+录制快照，所以看到的就是装上后的真实面板。写操作在 Demo 里是禁用的。
 
 ## 发布（维护者）
 

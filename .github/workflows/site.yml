@@ -1,10 +1,14 @@
-name: Publish promo page
+name: Build & deploy site
 
-# 把宣传片成片发布到 GitHub Pages。
-# 成片 mp4 不进 git（改一版就翻倍），所以这里在 CI 里用 ffmpeg 现场合成：
-#   画面 = 仓库里的逐帧 PNG（video/frames/，mock 渲染产物，约 1134 张）
-#   音频 = 仓库里的 ACE-Step 配乐（video/audio/acestep/bgm-ace.wav）
-# 渲染器源码留在仓库，改文案后在本地跑 video/render.sh 重出帧与音频即可。
+# 站点 = 宣传片播放页 + 在线 Demo，挂在 https://dsh.caozeal.cn/next-git/
+#
+# 发布走 Cloudflare Workers 静态资源（video/wrangler.toml），不是 GitHub Pages：
+# caozeal.github.io 仓库把 www.caozeal.cn 设为 Pages 自定义域，而该域名实际由
+# nginx 服务，导致该账号下所有项目站点被 301 过去必然 404；且 Pages 自定义域
+# 只能占域名根，不支持 /next-git 这种子路径。
+#
+# 本 workflow 负责：构建站点 + 校验 Demo 资产 + 上传 artifact。
+# 部署这一步只在仓库配置了 CLOUDFLARE_API_TOKEN 时才执行，否则跳过并给出提示。
 
 on:
   push:
@@ -13,21 +17,22 @@ on:
       - 'video/**'
       - 'dsh-next-git/demo/**'
       - 'dsh-next-git/lib/client.js'
-      - '.github/workflows/pages.yml'
+      - '.github/workflows/site.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: pages
+  group: site
   cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
       - uses: actions/checkout@v7
 
@@ -41,21 +46,26 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg
 
+      # 第二个参数是挂载前缀：产物落到 $SITE/next-git/
       - name: Build page shell
-        run: node video/pages.mjs "$RUNNER_TEMP/site"
+        run: node video/pages.mjs "$SITE" next-git
+        env:
+          SITE: ${{ runner.temp }}/site
 
       - name: Encode clips from committed frames
         # 成片 mp4 不进 git（改一版就翻倍），靠仓库里的逐帧 PNG 现场合成。
         # 但 frames 也是本地产物、没入库，所以这里必须允许「没有 frames」：
-        # 此时只发 Demo 页（demo/ 是自包含的），而不是整站部署失败。
+        # 此时只发 Demo 页（demo/ 是自包含的），而不是整站构建失败。
         if: ${{ hashFiles('video/frames/f00001.png') != '' }}
+        env:
+          SITE: ${{ runner.temp }}/site
         run: |
           set -euo pipefail
           FPS=30
           TOTAL=$(node -e "import('./video/src/core/timeline.js').then(m=>console.log(m.TOTAL.toFixed(2)))")
           FRAMES=video/frames
-          mkdir -p "$RUNNER_TEMP/site/video/out"
-          test -d "$FRAMES" || { echo "::error::缺少 video/frames，先在本地跑 video/render.sh"; exit 1; }
+          OUT="$SITE/next-git/video/out"
+          mkdir -p "$OUT"
 
           # 与 render.sh 完全一致的编码参数：30fps 帧 -> 60fps + 淡入淡出 -> 轻缓推镜
           ffmpeg -y -hide_banner -loglevel error -framerate $FPS -i "$FRAMES/f%05d.png" \
@@ -72,19 +82,22 @@ jobs:
           ffmpeg -y -hide_banner -loglevel error -i "$RUNNER_TEMP/silent.mp4" \
             -i video/audio/acestep/bgm-ace.wav \
             -map 0:v:0 -map 1:a:0 -c:v copy -c:a aac -b:a 192k -ar 48000 -shortest \
-            -movflags +faststart "$RUNNER_TEMP/site/video/out/dsh-next-git-promo-mockup.mp4"
+            -movflags +faststart "$OUT/dsh-next-git-promo-mockup.mp4"
 
-          cp "$RUNNER_TEMP/silent.mp4" "$RUNNER_TEMP/site/video/out/dsh-next-git-promo-silent.mp4"
+          cp "$RUNNER_TEMP/silent.mp4" "$OUT/dsh-next-git-promo-silent.mp4"
 
-      # Demo 由 video/pages.mjs 一并打进站点（本地手工上传 Cloudflare 走同一条路径），
-      # 这里只做存在性校验，避免两边各拷一份、改一处忘另一处。
+      # Demo 由 video/pages.mjs 一并打进站点，这里只做存在性校验，
+      # 避免两边各拷一份、改一处忘另一处。
       - name: Verify demo assets
+        env:
+          SITE: ${{ runner.temp }}/site
         run: |
           set -euo pipefail
           for f in index.html host-shim.js boot.js fixtures.json; do
-            test -f "$RUNNER_TEMP/site/dsh-next-git/demo/$f" || { echo "::error::缺少 demo/$f"; exit 1; }
+            test -f "$SITE/next-git/demo/$f" || { echo "::error::缺少 demo/$f"; exit 1; }
           done
-          test -f "$RUNNER_TEMP/site/dsh-next-git/lib/client.js" || { echo "::error::缺少 lib/client.js"; exit 1; }
+          test -f "$SITE/next-git/lib/client.js" || { echo "::error::缺少 lib/client.js"; exit 1; }
+          test -f "$SITE/next-git/index.html" || { echo "::error::缺少 next-git/index.html"; exit 1; }
 
       - name: Note missing video frames
         if: ${{ hashFiles('video/frames/f00001.png') == '' }}
@@ -92,16 +105,17 @@ jobs:
           echo "::warning::video/frames 不在仓库里，本次不合成宣传片；只发布 Demo 页。"
           echo "本地跑 video/render.sh 生成 frames 后推送，即可恢复完整站点。"
 
-      - uses: actions/upload-pages-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
+          name: site
           path: ${{ runner.temp }}/site
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Deploy to Cloudflare
+        if: ${{ env.CLOUDFLARE_API_TOKEN != '' }}
+        run: npx --yes wrangler@4 deploy --config video/wrangler.toml
+
+      - name: Note skipped deploy
+        if: ${{ env.CLOUDFLARE_API_TOKEN == '' }}
+        run: |
+          echo "::notice::未配置 CLOUDFLARE_API_TOKEN，跳过自动部署。"
+          echo "手动发布：node video/pages.mjs video/site next-git && npx wrangler deploy --config video/wrangler.toml"

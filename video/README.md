@@ -21,27 +21,34 @@ ACE-Step 那条见 [`audio/acestep/README.md`](audio/acestep/README.md)（含 4 
 
 ### 在线站点（播放页 + 在线 Demo）
 
-目标地址：**<https://dsh.caozeal.cn/next-git/>**，Demo 在 `/next-git/demo/`。
+**<https://dsh.caozeal.cn/next-git/>** — Demo 在 **<https://dsh.caozeal.cn/next-git/demo/>**。
 
-站点由 `video/pages.mjs` 一次生成，内容 = 播放页 + 在线 Demo + 插件真实 client.js：
+站点由 `video/pages.mjs` 一次生成（内容 = 播放页 + 在线 Demo + 插件真实 `lib/client.js`）：
 
 ```bash
-node video/pages.mjs video/site
+node video/pages.mjs video/site next-git   # 第二个参数是挂载前缀
 npx wrangler deploy --config video/wrangler.toml
 ```
 
-产物结构（`video/site/`，已 gitignore）：
+产物结构（`video/site/next-git/`，`video/site/` 已 gitignore）：
 
 ```
-index.html        播放页
-demo/             在线 Demo（index.html + host-shim.js + boot.js + fixtures.json）
-lib/client.js     插件真实前端代码，demo 按 ../lib/client.js 引用
-poster.png        封面
+next-git/index.html        播放页
+next-git/demo/             在线 Demo（index.html + host-shim.js + boot.js + fixtures.json）
+next-git/lib/client.js     插件真实前端代码，demo 按 ../lib/client.js 引用
+next-git/poster.png        封面
 ```
 
-为什么用 Worker 的 route 而不是 Cloudflare Pages：Pages 项目占据的是**主机名根**，
-没法只挂 `/next-git` 这种子路径；Worker route 可以精确匹配
-`dsh.caozeal.cn/next-git/*`，`video/worker.js` 负责把该前缀剥掉后交给静态资源。
+**为什么是「纯静态资源 + 子目录」而不是 Worker 剥前缀**：站点要挂在
+`dsh.caozeal.cn/next-git/` 这个**子路径**下，而 Cloudflare Pages 项目占据的是主机名根，
+没法只挂子路径，所以用 Worker route。但最初的做法是
+`main = worker.js` + `run_worker_first = true`，让 Worker 把 `/next-git` 剥掉再交给
+`env.ASSETS` —— 本地 `wrangler dev` 完全正常，**线上却直接报 `error code: 1042`**
+（Worker fetch 自己形成环）。改成把站点直接生成到 `next-git/` 子目录、**完全不要
+Worker 脚本**，路由交给静态资源按真实路径服务即可：零运行时逻辑，也不会成环。
+
+路由需要两条：`dsh.caozeal.cn/next-git`（精确路径，用户通常不带尾斜杠）和
+`dsh.caozeal.cn/next-git/*`。少了前者，直接访问 `/next-git` 会落到域名根 404。
 
 前置条件：`dsh.caozeal.cn` 在 Cloudflare 里有一条 **proxied（橙色云）** 的 DNS 记录，
 且 zone `caozeal.cn` 托管在 Cloudflare（NS: `elly.ns.cloudflare.com`）。
@@ -49,10 +56,13 @@ poster.png        封面
 本地联调（不需要登录）：
 
 ```bash
-node video/pages.mjs video/site
+node video/pages.mjs video/site next-git
 npx wrangler dev --config video/wrangler.toml --port 8787
 # 打开 http://127.0.0.1:8787/next-git/ 与 /next-git/demo/
 ```
+
+> 本地 `wrangler dev` **不能**复现线上的 1042 环——这正是当时误判的原因。
+> 改完 Worker/config 必须实际 deploy 一次再看线上。
 
 旧地址 **<https://dsh-next-git.1017835747.workers.dev/>** 仍在，内容是早前手工上传的
 播放页（不含 Demo），保留作备用。
