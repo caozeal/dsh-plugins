@@ -1,6 +1,6 @@
 {
   "name": "@caozeal/dsh-next-git",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "description": "DSH Git 管理插件：分支切换、变更暂存、提交/推送/拉取、AI 提交信息、提交图与 diff 查看",
   "type": "module",
   "main": "index.js",
