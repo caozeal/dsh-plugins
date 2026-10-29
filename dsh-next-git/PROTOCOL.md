@@ -236,8 +236,8 @@ dsh-next-git/
 | `stashDrop` | `{ cwd, index?: number }` | `git stash drop stash@{n}` | `{ output }` |
 | `setCommitPrompt` | `{ cwd, prompt: string }` | `git config --local dsh.commitPrompt <v>`；空串则 `--unset` | `{ prompt }` |
 | `conflictInfo` | `{ cwd, path }` | `git ls-files -u -z` + `git cat-file -p <blob>` | `{ path, branch, incoming, hasBase, oursExists, theirsExists, base, ours, theirs }` |
-| `aiConflict` | `{ cwd, path, hint? }` | 见 §3.5b | `{ path, suggested, model, hasBase }` |
-| `applyConflict` | `{ cwd, path, content }` | 写文件后 `git add -- <path>` | `{ path, resolved, unmerged }` |
+| `aiConflict` | `{ cwd, path, hint? }` | 见 §3.4b | `{ path, suggested, delete, deterministic, model, hasBase, oursExists, theirsExists }` |
+| `applyConflict` | `{ cwd, path, content?, delete? }` | `content` 写文件后 `git add -- <path>`；`delete: true` 走 `git rm -f --ignore-unmatch` | `{ path, resolved, deleted, unmerged }` |
 | `takeSide` | `{ cwd, path, side: 'ours'\|'theirs' }` | `git checkout --ours\|--theirs -- <path>` + `git add`；该侧无此文件时 `git rm -f` | `{ path, side, deleted, resolved, unmerged }` |
 
 `discard` 的三种模式对应变更列表的三个分组：`worktree` 只回退工作区，
@@ -258,22 +258,32 @@ Client 必须先确认再调用。冲突文件不提供 discard（语义等于�
 
 `aiConflict` 的装配逻辑：
 
-1. 三份内容各自截断到 40 000 字符，总长超过 240 000 字符直接 `invalid-params`（这个量级
+1. **删除/改名冲突先走确定性判断**：某一侧在索引里没有 stage 时（删除、改名），
+   若存活侧内容与 base 完全相同（或两侧都删了），删除是唯一无损解——直接返回
+   `{ delete: true, deterministic: true }`，不调用模型。否则问模型也只会得到
+   "把存活侧原样吐回来"的答案。
+2. 三份内容各自截断到 40 000 字符，总长超过 240 000 字符直接 `invalid-params`（这个量级
    已经不是"看懂了再合"，而是碰运气）。
-2. `branch` 来自 `rev-parse --abbrev-ref HEAD`；`incoming` 依次查 `MERGE_HEAD` / `REBASE_HEAD`，
+3. `branch` 来自 `rev-parse --abbrev-ref HEAD`；`incoming` 依次查 `MERGE_HEAD` / `REBASE_HEAD`，
    用 `git name-rev` 转成人类可读的 ref 名。
-3. 系统提示词要求：保留双方有价值的改动、版本号取更高的一方、只输出文件内容、
-   不要围栏/解释、拿不准时选让文件自洽的一侧而不是拼贴。
-4. **只返回建议，不写盘。** 校验：非空、不含行首 `<<<<<<<` / `>>>>>>>`。
-   不合格抛 `ai-unavailable`（宁可报错也不要用坏结果覆盖用户文件）。
+4. 系统提示词要求：保留双方有价值的改动、版本号取更高的一方、只输出文件内容、
+   不要围栏/解释、拿不准时选让文件自洽的一侧而不是拼贴。**删除语义必须显式给出**：
+   缺失的那一侧在 prompt 里写成「该侧已删除这个文件，没有内容」（不能留一段空白，
+   否则模型会当成空文件）；模型判断该删时只输出一行 `<<<DELETE_FILE>>>`。
+5. **只返回建议，不写盘。** 校验：非空、不含行首 `<<<<<<<` / `>>>>>>>`；
+   删除标记必须独占一行（允许被围栏包着）。不合格抛 `ai-unavailable`
+   （宁可报错也不要用坏结果覆盖用户文件）。
+6. 撞到 `max-tokens` 的输出是被截断的半份文件，直接抛 `ai-unavailable`，绝不写回。
 
 `applyConflict` 是唯一落盘入口：
 
 - `path` 必须是仓库内相对路径，绝对路径和 `..` 一律 `invalid-params`
   （否则构造过的 path 能写到仓库外）；
-- 内容必须非空、≤ 400 000 字符、且不含冲突标记；
 - 必须**当前确实是冲突文件**（再查一次 `git ls-files -u`），避免被当成通用写文件接口；
-- 写入后 `git add` 标记已解决，再回一次未解决数量。
+- `delete: true` 时用 `git rm -f --ignore-unmatch` 收掉冲突条目（删除/改名冲突的正确解
+  可能就是删除），返回 `deleted: true`，不碰文件内容；
+- 否则内容必须非空、≤ 400 000 字符、且不含冲突标记，写入后 `git add` 标记已解决；
+- 两条路径都回一次未解决数量。
 
 `takeSide` 用于机械场景（"整份取上游"）。该侧没有这个文件时（删除/改名冲突），
 语义就是删除，用 `git rm -f --ignore-unmatch` 收掉冲突条目，而不是让 `checkout --ours` 报错。

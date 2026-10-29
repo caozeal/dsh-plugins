@@ -334,3 +334,76 @@ test('真实仓库：冲突文件的 diff 能解析出 hunk（不是 combined di
   assert.ok(texts.some((text) => text.includes('main-change')), '差异里应有 ours 侧内容')
   assert.ok(texts.some((text) => text.includes('topic-change')), '差异里应有 theirs 侧内容')
 })
+
+/**
+ * 造一个真实的「删除/修改」冲突：feature 删掉 secret.txt 并把它加进 .gitignore，
+ * qa 侧改过这个文件。这是「qa 没动过就该干净删除」的常见反例：
+ * 只要 merge-base 之后该文件在 qa 侧有过改动，git 就会报 CONFLICT (modify/delete)。
+ */
+async function makeDeleteConflictRepo(label) {
+  const dir = await mkdtemp(join(tmpdir(), 'dsh-git-delete-conflict-'))
+  await git(dir, 'init', '-b', 'qa')
+  await git(dir, 'config', 'user.name', 'T')
+  await git(dir, 'config', 'user.email', 't@example.com')
+  await git(dir, 'config', 'commit.gpgsign', 'false')
+  await writeFile(join(dir, 'secret.txt'), 'line1\nline2\n')
+  await git(dir, 'add', '-A')
+  await git(dir, 'commit', '-m', 'chore: init')
+
+  await git(dir, 'checkout', '-b', 'feature')
+  await git(dir, 'rm', '-q', 'secret.txt')
+  await writeFile(join(dir, '.gitignore'), 'secret.txt\n')
+  await git(dir, 'add', '-A')
+  await git(dir, 'commit', '-m', 'chore: 删掉 secret.txt 并忽略')
+
+  await git(dir, 'checkout', 'qa')
+  await writeFile(join(dir, 'secret.txt'), 'line1\nline2 qa\n')
+  await git(dir, 'commit', '-am', 'feat: qa 侧改过这个文件')
+
+  const merge = await realExec(['git', 'merge', 'feature'], { cwd: dir })
+  if (merge.code === 0) throw new Error(label + ': 期望产生删除/修改冲突，但 merge 成功了')
+  if (!/CONFLICT \(modify\/delete\)/.test(merge.stdout + merge.stderr)) {
+    throw new Error(label + ': 期望 modify/delete 冲突，实际：' + merge.stdout + merge.stderr)
+  }
+  return dir
+}
+
+test('真实仓库：删除/修改冲突把「该侧已删除」交给模型，并接受删除决定', async (t) => {
+  const dir = await makeDeleteConflictRepo('aiConflictDelete')
+  t.after(() => rm(dir, { recursive: true, force: true }))
+
+  const requests = []
+  const llm = {
+    stream(request) {
+      requests.push(request)
+      return (async function* () {
+        yield { type: 'text-delta', text: '<<<DELETE_FILE>>>' }
+        yield { type: 'finish', reason: { kind: 'stop' } }
+      })()
+    },
+  }
+  const ops = createOperations({ exec: realExec, ai: () => ({ llm, selection: { provider: 'p', model: 'm' } }) })
+  const data = await ops.handle('aiConflict', { cwd: dir, path: 'secret.txt' })
+  assert.equal(data.theirsExists, false, 'feature 侧应被识别为删除')
+  assert.equal(data.delete, true)
+  assert.equal(data.suggested, null)
+  const prompt = requests[0].messages[0].content[0].text
+  assert.match(prompt, /该侧已删除这个文件/)
+  assert.match(prompt, /line2 qa/, '存活侧内容仍要交给模型判断')
+})
+
+test('真实仓库：applyConflict delete 收掉删除/修改冲突，且能正常提交', async (t) => {
+  const dir = await makeDeleteConflictRepo('applyConflictDelete')
+  t.after(() => rm(dir, { recursive: true, force: true }))
+
+  const ops = createOperations({ exec: realExec, ai: () => null })
+  const data = await ops.handle('applyConflict', { cwd: dir, path: 'secret.txt', delete: true })
+  assert.equal(data.deleted, true)
+  assert.equal(data.unmerged, 0)
+  await assert.rejects(() => access(join(dir, 'secret.txt')), '文件应已被删除')
+  const staged = await git(dir, 'status', '--porcelain')
+  assert.match(staged, /D  secret\.txt/, '删除应进入暂存区')
+  await git(dir, 'commit', '-m', 'chore: 合并 feature（删除 secret.txt）')
+  const files = await git(dir, 'ls-files')
+  assert.ok(!files.includes('secret.txt'), '提交后文件不应再被跟踪')
+})

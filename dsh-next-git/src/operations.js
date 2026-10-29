@@ -713,6 +713,9 @@ export function createOperations(deps) {
   /**
    * 生成解决建议。**不写盘** —— 用户确认后走 applyConflict。
    * 这样模型给出坏结果时最多是白看一次，不会把工作区改脏。
+   *
+   * 删除/改名冲突（某一侧在索引里没有 stage）先走确定性判断：存活的一侧相对 base
+   * 没有任何改动时，删除是唯一无损解，不必问模型（问也容易得到「原样保留」的错答案）。
    */
   async function aiConflict(params, signal) {
     const cwd = assertCwd(params.cwd)
@@ -724,6 +727,25 @@ export function createOperations(deps) {
     const path = assertRelPath(params.path)
     const hint = typeof params.hint === 'string' ? params.hint.slice(0, 500) : ''
     const info = await loadConflict(root, path, signal)
+    const oursDeleted = !info.stages[2]
+    const theirsDeleted = !info.stages[3]
+    const hasBase = info.base !== null
+    const unchanged = (text) => hasBase && text === info.base
+    const deleteOnly = (oursDeleted && theirsDeleted)
+      || (theirsDeleted && unchanged(info.ours))
+      || (oursDeleted && unchanged(info.theirs))
+    if (deleteOnly) {
+      return {
+        path,
+        suggested: null,
+        delete: true,
+        deterministic: true,
+        model: null,
+        hasBase,
+        oursExists: !oursDeleted,
+        theirsExists: !theirsDeleted,
+      }
+    }
     const total = info.ours.length + info.theirs.length + (info.base ? info.base.length : 0)
     if (total > 240000) {
       throw new GitError(`冲突文件过大（三份共 ${total} 字符），请手动解决`, { code: 'invalid-params' })
@@ -736,6 +758,8 @@ export function createOperations(deps) {
       base: info.base,
       ours: info.ours,
       theirs: info.theirs,
+      oursDeleted,
+      theirsDeleted,
       branch,
       incoming,
       hint,
@@ -746,12 +770,19 @@ export function createOperations(deps) {
     return {
       path,
       suggested: result.suggested,
+      delete: result.delete,
+      deterministic: false,
       model: result.model,
-      hasBase: info.base !== null,
+      hasBase,
+      oursExists: !oursDeleted,
+      theirsExists: !theirsDeleted,
     }
   }
 
-  /** 把解决结果写回工作区并标记为已解决。写入前再挡一次冲突标记。 */
+  /**
+   * 把解决结果写回工作区（`delete: true` 时改为删除该文件）并标记为已解决。
+   * 写入前再挡一次冲突标记；删除前再确认一次这确实是冲突文件。
+   */
   async function applyConflict(params, signal) {
     const cwd = assertCwd(params.cwd)
     const resolved = await repoRoot(cwd, signal)
@@ -760,6 +791,15 @@ export function createOperations(deps) {
       throw new GitError(`当前目录不是 Git 仓库：${cwd}${resolved.error ? `（${resolved.error}）` : ''}`, { code: 'not-a-repo' })
     }
     const path = assertRelPath(params.path)
+    // 必须是当前真实的冲突文件，避免用这个接口去改/删任意文件
+    await loadConflict(root, path, signal)
+    if (params.delete === true) {
+      await runGit(['rm', '-f', '--ignore-unmatch', '--', path], {
+        cwd: root, signal, timeoutMs: timeouts.write, allowFailure: true,
+      })
+      const unmerged = await unmergedCount(root, signal)
+      return { path, resolved: true, deleted: true, unmerged }
+    }
     const content = params.content
     if (typeof content !== 'string' || content.trim() === '') {
       throw new GitError('content 不能为空', { code: 'invalid-params' })
@@ -770,8 +810,6 @@ export function createOperations(deps) {
     if (hasConflictMarkers(content)) {
       throw new GitError('解决结果仍包含冲突标记，拒绝写入', { code: 'invalid-params' })
     }
-    // 必须是当前真实的冲突文件，避免用这个接口去改任意文件
-    await loadConflict(root, path, signal)
     const abs = join(root, path)
     if (abs !== root && !abs.startsWith(root + '/')) {
       throw new GitError('path 超出仓库范围', { code: 'invalid-params' })
@@ -779,7 +817,7 @@ export function createOperations(deps) {
     await writeFileImpl(abs, content, 'utf8')
     await runGit(['add', '--', path], { cwd: root, signal, timeoutMs: timeouts.write })
     const unmerged = await unmergedCount(root, signal)
-    return { path, resolved: true, unmerged }
+    return { path, resolved: true, deleted: false, unmerged }
   }
 
   /**

@@ -2,10 +2,12 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   DEFAULT_SYSTEM_PROMPT,
+  DELETE_MARKER,
   MAX_SIDE_CHARS,
   buildConflictPrompt,
   extractFenced,
   hasConflictMarkers,
+  parseResolution,
   resolveConflict,
   sanitizeResolution,
   validateResolution,
@@ -130,4 +132,76 @@ test('resolveConflict 模型仍吐冲突标记时拒绝采用', async () => {
 test('默认系统提示词要求直接给文件内容', () => {
   assert.match(DEFAULT_SYSTEM_PROMPT, /完整文件内容/)
   assert.match(DEFAULT_SYSTEM_PROMPT, /不要 Markdown 围栏/)
+})
+
+test('buildConflictPrompt 把「某一侧被删除」写清楚，而不是留一段空白', () => {
+  const prompt = buildConflictPrompt({
+    path: 'secret.txt',
+    base: 'a\nb\n',
+    ours: 'a\nb changed\n',
+    theirs: '',
+    theirsDeleted: true,
+    branch: 'qa',
+    incoming: 'feature',
+  })
+  assert.match(prompt, /=== theirs（合入分支） ===/)
+  assert.match(prompt, /该侧已删除这个文件/)
+  // 删除侧不能只剩一个空段落让人误读成「空文件」
+  assert.ok(!prompt.includes('=== theirs（合入分支） ===\n\n'), prompt)
+})
+
+test('buildConflictPrompt 两侧都在时不会误标删除', () => {
+  const prompt = buildConflictPrompt({ path: 'a.txt', base: 'b', ours: 'o', theirs: 't' })
+  assert.ok(!prompt.includes('已删除'))
+})
+
+test('parseResolution 识别独占一行的删除标记（允许被围栏包着）', () => {
+  assert.deepEqual(parseResolution(DELETE_MARKER), { delete: true, content: null })
+  assert.deepEqual(parseResolution('这个文件应该删除\n```\n' + DELETE_MARKER + '\n```\n'), { delete: true, content: null })
+  assert.deepEqual(parseResolution('  ' + DELETE_MARKER + '  '), { delete: true, content: null })
+})
+
+test('parseResolution 普通内容仍按文件内容清理', () => {
+  const parsed = parseResolution('```js\nconst a = 1\n```')
+  assert.equal(parsed.delete, false)
+  assert.equal(parsed.content, 'const a = 1\n')
+})
+
+test('resolveConflict 模型给删除标记时返回 delete=true，不当作空文件', async () => {
+  const result = await resolveConflict({
+    path: 'secret.txt',
+    base: 'a\n',
+    ours: 'a changed\n',
+    theirs: '',
+    theirsDeleted: true,
+    llm: fakeLlm([DELETE_MARKER]),
+    selection: { provider: 'p', model: 'm' },
+  })
+  assert.equal(result.delete, true)
+  assert.equal(result.suggested, null)
+  assert.equal(result.model, 'p/m')
+})
+
+test('resolveConflict 撞到 maxTokens 截断时报错，不把半份文件当结果', async () => {
+  const truncated = {
+    stream() {
+      return (async function* () {
+        yield { type: 'text-delta', text: 'const a = 1\n' }
+        yield { type: 'finish', reason: { kind: 'max-tokens' } }
+      })()
+    },
+  }
+  await assert.rejects(
+    () => resolveConflict({
+      path: 'a.js', base: null, ours: 'x', theirs: 'y',
+      llm: truncated,
+      selection: { provider: 'p', model: 'm' },
+    }),
+    (error) => error.code === 'ai-unavailable' && /截断/.test(error.message),
+  )
+})
+
+test('默认系统提示词包含删除协议', () => {
+  assert.ok(DEFAULT_SYSTEM_PROMPT.includes(DELETE_MARKER))
+  assert.match(DEFAULT_SYSTEM_PROMPT, /该侧已删除这个文件/)
 })

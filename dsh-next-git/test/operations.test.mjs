@@ -605,3 +605,91 @@ test('diff：普通文件仍然走 git diff -- path', async () => {
   assert.equal(data.mode, 'worktree')
   assert.ok(calls.map((call) => call.args.join(' ')).includes('diff --no-color -- a.txt'))
 })
+
+/** 删除/改名冲突：theirs 侧在索引里没有 stage（只有 :1: 与 :2:）。 */
+function deleteConflictRoutes({ ours = 'base\n', extra = [] } = {}) {
+  const ls = [
+    '100644 aaaa1111 1\ta.txt',
+    '100644 bbbb2222 2\ta.txt',
+    '',
+  ].join('\u0000')
+  return [
+    [['rev-parse', '--show-toplevel'], ok(ROOT + '\n')],
+    [['ls-files', '-u', '-z', '--', 'a.txt'], ok(ls)],
+    [['cat-file', '-p', 'aaaa1111'], ok('base\n')],
+    [['cat-file', '-p', 'bbbb2222'], ok(ours)],
+    [['rev-parse', '--abbrev-ref', 'HEAD'], ok('qa\n')],
+    ...extra,
+  ]
+}
+
+test('aiConflict：存活侧与 base 完全相同时确定性判定删除，不问模型', async () => {
+  let called = false
+  const llm = {
+    stream() {
+      called = true
+      throw new Error('不该调用模型')
+    },
+  }
+  const { exec } = makeExec(deleteConflictRoutes())
+  const ops = createOperations({ exec, ai: () => ({ llm, selection: { provider: 'p', model: 'm' } }) })
+  const data = await ops.handle('aiConflict', { cwd: CWD, path: 'a.txt' })
+  assert.equal(data.delete, true)
+  assert.equal(data.deterministic, true)
+  assert.equal(data.suggested, null)
+  assert.equal(data.theirsExists, false)
+  assert.equal(called, false, '确定性删除不应调用模型')
+})
+
+test('aiConflict：存活侧有改动时把「已删除」告诉模型，并接受删除决定', async () => {
+  const requests = []
+  const llm = {
+    stream(request) {
+      requests.push(request)
+      return (async function* () {
+        yield { type: 'text-delta', text: '<<<DELETE_FILE>>>' }
+        yield { type: 'finish', reason: { kind: 'stop' } }
+      })()
+    },
+  }
+  const { exec } = makeExec(deleteConflictRoutes({ ours: 'base changed on qa\n' }))
+  const ops = createOperations({ exec, ai: () => ({ llm, selection: { provider: 'p', model: 'm' } }) })
+  const data = await ops.handle('aiConflict', { cwd: CWD, path: 'a.txt' })
+  assert.equal(data.delete, true)
+  assert.equal(data.deterministic, false)
+  assert.equal(data.suggested, null)
+  const prompt = requests[0].messages[0].content[0].text
+  assert.match(prompt, /该侧已删除这个文件/)
+  assert.match(requests[0].system, /<<<DELETE_FILE>>>/)
+})
+
+test('applyConflict：delete=true 走 git rm 收掉冲突条目', async () => {
+  const io = fakeIO()
+  const routes = deleteConflictRoutes({
+    extra: [
+      [['rm', '-f', '--ignore-unmatch', '--', 'a.txt'], ok('')],
+      [['diff', '--name-only', '--diff-filter=U', '-z'], ok('')],
+    ],
+  })
+  const { exec, calls } = makeExec(routes)
+  const ops = createOperations({ exec, fileIO: io.fileIO })
+  const data = await ops.handle('applyConflict', { cwd: CWD, path: 'a.txt', delete: true })
+  assert.equal(data.resolved, true)
+  assert.equal(data.deleted, true)
+  assert.equal(data.unmerged, 0)
+  assert.equal(io.writes.length, 0, '删除不应写文件')
+  assert.ok(calls.map((call) => call.args.join(' ')).includes('rm -f --ignore-unmatch -- a.txt'))
+})
+
+test('applyConflict：delete=true 时也必须确实是冲突文件', async () => {
+  const routes = [
+    [['rev-parse', '--show-toplevel'], ok(ROOT + '\n')],
+    [['ls-files', '-u', '-z', '--', 'a.txt'], ok('')],
+  ]
+  const { exec } = makeExec(routes)
+  const ops = createOperations({ exec })
+  await assert.rejects(
+    () => ops.handle('applyConflict', { cwd: CWD, path: 'a.txt', delete: true }),
+    (error) => error instanceof GitError && error.code === 'invalid-params',
+  )
+})

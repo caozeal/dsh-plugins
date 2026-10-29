@@ -207,7 +207,17 @@ function resolveOp(fixtures, body) {
         base: record.base
       })
     }
-    return ok({ path: record.path, suggested: record.suggested, model: record.model, hasBase: record.hasBase })
+    // 新协议多了「删除」这一种解决结果：record.delete 为真时没有 suggested。
+    return ok({
+      path: record.path,
+      suggested: record.delete ? null : record.suggested,
+      delete: Boolean(record.delete),
+      deterministic: Boolean(record.deterministic),
+      model: record.model,
+      hasBase: record.hasBase,
+      oursExists: record.oursExists !== false,
+      theirsExists: record.theirsExists !== false
+    })
   }
   // 写操作：Demo 里不真的改仓库，明确告知而不是假装成功。
   // 文案要短：这条提示渲染在面板底部那一行状态条里，太长会被截断。
