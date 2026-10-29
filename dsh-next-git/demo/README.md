@@ -50,6 +50,10 @@ node demo/gen-fixtures.mjs /tmp/whale-notes
 Demo 只读。点「暂存」「提交」「Push」会在底部状态条提示
 「演示模式为只读快照」，**不会假装成功**——假装成功比报错更糟。
 
+唯一的例外是 **Pull**：为了让「无上游 → 选远端分支 → 建立跟踪」这条交互可视，
+Demo 里不带参数的 Pull 会模拟 `There is no tracking information` 失败并弹出
+「拉取选项」；在面板里确认后返回一条只读的「已拉取」回执（不联网、不改仓库）。
+
 ## 本地预览
 
 必须走 HTTP（`file://` 下浏览器会拦 `fetch`）：

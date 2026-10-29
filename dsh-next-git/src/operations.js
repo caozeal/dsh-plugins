@@ -98,6 +98,11 @@ function assertRef(value, label) {
   if (typeof value !== 'string' || value.trim() === '') {
     throw new GitError(`缺少 ${label} 参数`, { code: 'invalid-params' })
   }
+  // 前导 '-' 会被 git 当成选项（如 remote='--upload-pack'），必须拒绝，
+  // 否则可构造 git 选项注入。git 本身也不允许分支/远端名以 '-' 开头。
+  if (value.startsWith('-')) {
+    throw new GitError(`${label} 不能以 - 开头：${value}`, { code: 'invalid-params' })
+  }
   if (!SAFE_REF.test(value)) {
     throw new GitError(`${label} 含非法字符：${value}`, { code: 'invalid-params' })
   }
@@ -474,7 +479,37 @@ export function createOperations(deps) {
     const resolved = await repoRoot(cwd, signal)
     const root = resolved.root
     if (!root) throw new GitError(`当前目录不是 Git 仓库：${cwd}${resolved.error ? `（${resolved.error}）` : ''}`, { code: 'not-a-repo' })
-    const result = await runGit(['pull'], { cwd: root, signal, timeoutMs: timeouts.network })
+    // 默认沿用仓库配置（裸 git pull）。当 UI 引导用户选择了「远端 + 分支」时，
+    // 显式拉取该远端分支；setUpstream 为真则顺带建立跟踪关系（等价 CLI 的
+    // git pull --set-upstream <remote> <branch>），解决「没有 tracking information」。
+    /** @type {string[]} */
+    let args
+    if (params.remote !== undefined || params.branch !== undefined) {
+      /** @type {string} */
+      let remote
+      if (params.remote !== undefined) {
+        remote = assertRef(params.remote, 'remote')
+      } else {
+        // 只给了 branch 没给 remote 时，不要硬编码 'origin'：取仓库实际配置的远端，
+        // 有 origin 优先，否则用第一个远端（兼容主远端不叫 origin 的仓库）。
+        const remotesRes = await runGit(['remote'], { cwd: root, signal, allowFailure: true })
+        const remotes = String(remotesRes.stdout || '').split('\n').map((line) => line.trim()).filter(Boolean)
+        remote = remotes.includes('origin') ? 'origin' : (remotes[0] || 'origin')
+      }
+      let branchName
+      if (params.branch !== undefined) {
+        branchName = assertRef(params.branch, 'branch')
+      } else {
+        branchName = await currentBranch(root, signal)
+        if (!branchName) throw new GitError('当前处于 detached HEAD，无法拉取', { code: 'git-failed' })
+      }
+      args = params.setUpstream === true
+        ? ['pull', '--set-upstream', remote, branchName]
+        : ['pull', remote, branchName]
+    } else {
+      args = ['pull']
+    }
+    const result = await runGit(args, { cwd: root, signal, timeoutMs: timeouts.network })
     return {
       branch: await currentBranch(root, signal),
       output: joinOutput(result.stdout, result.stderr),

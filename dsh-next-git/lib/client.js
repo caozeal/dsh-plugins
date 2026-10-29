@@ -42,6 +42,12 @@ window.__ModuleLoader__.load({
       'header.fromPlaceholder': '起点分支（可选）',
       'header.create': '创建',
       'header.cancel': '取消',
+      'pull.title': '拉取选项',
+      'pull.hint': '当前分支「{branch}」没有上游跟踪，选择要拉取的远端分支（可顺带建立跟踪）。',
+      'pull.target': '远端分支',
+      'pull.noBranch': '没有可选的远端分支',
+      'pull.setUpstream': '设为上游（以后直接 Pull 即可）',
+      'pull.confirm': '拉取',
       'header.repo': '仓库',
       'header.ahead': '领先 {n}',
       'header.behind': '落后 {n}',
@@ -212,6 +218,12 @@ window.__ModuleLoader__.load({
       'header.fromPlaceholder': 'start point (optional)',
       'header.create': 'Create',
       'header.cancel': 'Cancel',
+      'pull.title': 'Pull options',
+      'pull.hint': 'Branch "{branch}" has no upstream. Pick a remote branch to pull from (optionally set it as upstream).',
+      'pull.target': 'Remote branch',
+      'pull.noBranch': 'No remote branches available',
+      'pull.setUpstream': 'Set as upstream (plain Pull works afterwards)',
+      'pull.confirm': 'Pull',
       'header.repo': 'Repo',
       'header.ahead': '{n} ahead',
       'header.behind': '{n} behind',
@@ -617,6 +629,22 @@ window.__ModuleLoader__.load({
       .gm-prompt { display:flex; flex-direction:column; gap:5px; padding:8px; border-radius:10px;
         background:var(--gm-blue-06); border:1px solid var(--gm-blue-12); }
       .gm-prompt .gm-section { padding:0; }
+      /* 拉取选项：居中弹窗（覆盖面板区域 + 遮罩，比原来的内联行更醒目） */
+      .gm-pullopts-mask { position:fixed; inset:0; z-index:80; display:flex; align-items:center; justify-content:center;
+        padding:16px; background:color-mix(in srgb, var(--gm-base) 58%, transparent);
+        -webkit-backdrop-filter:blur(2px); backdrop-filter:blur(2px); animation:gm-fade .16s ease; }
+      .gm-pullopts { width:min(100%, 340px); max-height:100%; overflow:auto; display:flex; flex-direction:column; gap:9px;
+        padding:14px; border-radius:16px; background:var(--gm-card); border:1px solid var(--gm-blue-28);
+        box-shadow:0 18px 50px color-mix(in srgb, #000 26%, transparent), 0 4px 14px var(--gm-blue-18);
+        animation:gm-pop .2s ease; }
+      .gm-pullopts-head { align-items:center; }
+      .gm-pullopts-title { font-size:12.5px; font-weight:700; letter-spacing:.02em; color:var(--gm-ink); }
+      .gm-pullopts-hint { white-space:normal; line-height:1.55; font-size:11px; color:var(--gm-dim); }
+      .gm-pullopts .gm-row > .gm-hint { flex:none; }
+      .gm-pullopts .gm-select { flex:1 1 auto; max-width:none; height:30px; border-radius:9px; }
+      .gm-pullopts .gm-check { font-size:11.5px; padding:2px 0; }
+      .gm-check { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--gm-dim); cursor:pointer; }
+      .gm-check input { width:13px; height:13px; accent-color:var(--gm-blue); flex:none; cursor:pointer; }
       .gm-prompt-text { min-height:96px; max-height:180px; font-size:11px;
         font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
       .gm-commit-title { font-size:10.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase;
@@ -722,6 +750,53 @@ window.__ModuleLoader__.load({
       } catch (error) {
         return key
       }
+    }
+
+    // ---------------------------------------------------------- pull helpers
+
+    /** 快照里可选的远端分支名（如 origin/main），排除符号引用 origin/HEAD。 */
+    function remoteBranchNames(snapshot) {
+      var branches = snapshot && snapshot.branches ? snapshot.branches : []
+      return branches
+        .filter(function (b) { return b.kind === 'remote' && b.name && b.name.indexOf('/') > 0 })
+        .map(function (b) { return b.name })
+    }
+
+    /** 默认选中：优先 origin/<当前分支>，其次任意远端上的同名分支，再次第一个远端分支。 */
+    function defaultPullRef(snapshot) {
+      var names = remoteBranchNames(snapshot)
+      if (names.length === 0) return ''
+      var repo = snapshot && snapshot.repo ? snapshot.repo : {}
+      var branch = repo.branch
+      if (branch) {
+        var same = names.filter(function (n) { return n.slice(n.indexOf('/') + 1) === branch })
+        if (same.length > 0) {
+          var originSame = same.filter(function (n) { return n.indexOf('origin/') === 0 })
+          return originSame[0] || same[0]
+        }
+      }
+      var originAny = names.filter(function (n) { return n.indexOf('origin/') === 0 })
+      return originAny[0] || names[0]
+    }
+
+    /** 把 origin/main 拆成 { remote: 'origin', branch: 'main' }；优先按已知 remote 名匹配最长前缀。 */
+    function splitRemoteRef(ref, remotes) {
+      var value = String(ref || '')
+      var names = (remotes || []).map(function (r) { return r && r.name }).filter(Boolean)
+        .sort(function (a, b) { return b.length - a.length })
+      for (var i = 0; i < names.length; i += 1) {
+        if (value.indexOf(names[i] + '/') === 0) {
+          return { remote: names[i], branch: value.slice(names[i].length + 1) }
+        }
+      }
+      var slash = value.indexOf('/')
+      if (slash > 0) return { remote: value.slice(0, slash), branch: value.slice(slash + 1) }
+      return { remote: 'origin', branch: value }
+    }
+
+    /** git 的「没有/找不到上游」错误判断（英文输出固定，见 cleanGitEnv）。 */
+    function isNoTrackingError(text) {
+      return /no tracking information|no upstream|there is no tracking|no such ref was fetched|specifies to merge with the ref/i.test(String(text || ''))
     }
 
     // --------------------------------------------------------------- helpers
@@ -930,6 +1005,9 @@ window.__ModuleLoader__.load({
         newBranchOpen: false,
         newBranchName: '',
         newBranchFrom: '',
+        // 拉取选项面板：非空时在顶栏下方展开，用于「无上游」时选远端分支。
+        // { ref: 'origin/main', setUpstream: true }
+        pullOptions: null,
         // 自定义 AI 提示词编辑态。promptDraft 是编辑中的草稿，
         // 只有点保存才写回 git config，避免边打字边写盘。
         promptOpen: false,
@@ -1045,6 +1123,7 @@ window.__ModuleLoader__.load({
           newBranchOpen: false,
           newBranchName: '',
           newBranchFrom: '',
+          pullOptions: null,
         })
         if (cwd) void refresh()
       }
@@ -1392,7 +1471,7 @@ window.__ModuleLoader__.load({
         var result = await runBusy('switch', function () { return rpc('switchBranch', { cwd: cwd, name: name }) })
         if (result !== null) {
           toast('ok', tr('status.branchSwitched', { branch: result.branch || name }), result.output)
-          set({ selected: null, diff: null, activeTab: 'changes' })
+          set({ selected: null, diff: null, activeTab: 'changes', pullOptions: null })
           await refresh()
         }
       }
@@ -1407,7 +1486,7 @@ window.__ModuleLoader__.load({
         if (from !== '') params.from = from
         var result = await runBusy('switch', function () { return rpc('switchBranch', params) })
         if (result !== null) {
-          set({ newBranchOpen: false, newBranchName: '', newBranchFrom: '' })
+          set({ newBranchOpen: false, newBranchName: '', newBranchFrom: '', pullOptions: null })
           toast('ok', tr('status.branchCreated', { branch: result.branch || name }), result.output)
           await refresh()
         }
@@ -1468,8 +1547,55 @@ window.__ModuleLoader__.load({
       async function pull() {
         var cwd = store.get().cwd
         if (!cwd) return
+        set({ pullOptions: null })
         var result = await runBusy('pull', function () { return rpc('pull', { cwd: cwd }) })
         if (result !== null) {
+          toast('ok', tr('status.pullOk'), result.output)
+          await refresh()
+          return
+        }
+        // 失败若因为「当前分支没有上游」或「上游已消失」，就地在面板里给出选择，
+        // 而不是让用户去敲 CLI。（upstreamGone 时 git 的文案可能不同，单独兜底。）
+        var state = store.get()
+        var repo = state.snapshot && state.snapshot.repo ? state.snapshot.repo : null
+        var noUpstream = isNoTrackingError(state.error) || !!(repo && repo.upstreamGone)
+        if (noUpstream && remoteBranchNames(state.snapshot).length > 0) {
+          set({ pullOptions: { ref: defaultPullRef(state.snapshot), setUpstream: true } })
+        }
+      }
+
+      function setPullOptionRef(value) {
+        var options = store.get().pullOptions
+        if (!options) return
+        set({ pullOptions: Object.assign({}, options, { ref: String(value || '') }) })
+      }
+
+      function setPullOptionUpstream(value) {
+        var options = store.get().pullOptions
+        if (!options) return
+        set({ pullOptions: Object.assign({}, options, { setUpstream: !!value }) })
+      }
+
+      function closePullOptions() {
+        set({ pullOptions: null })
+      }
+
+      async function confirmPullOptions() {
+        var state = store.get()
+        var options = state.pullOptions
+        var cwd = state.cwd
+        if (!cwd || !options || !options.ref) return
+        if (remoteBranchNames(state.snapshot).length === 0) return
+        var target = splitRemoteRef(options.ref, state.snapshot && state.snapshot.remotes)
+        var params = {
+          cwd: cwd,
+          remote: target.remote,
+          branch: target.branch,
+          setUpstream: !!options.setUpstream,
+        }
+        var result = await runBusy('pull', function () { return rpc('pull', params) })
+        if (result !== null) {
+          set({ pullOptions: null })
           toast('ok', tr('status.pullOk'), result.output)
           await refresh()
         }
@@ -1504,6 +1630,10 @@ window.__ModuleLoader__.load({
         fetch: fetchRemote,
         pull: pull,
         push: push,
+        setPullOptionRef: setPullOptionRef,
+        setPullOptionUpstream: setPullOptionUpstream,
+        closePullOptions: closePullOptions,
+        confirmPullOptions: confirmPullOptions,
         setMessage: setMessage,
         setAiHint: setAiHint,
         setTab: setTab,
@@ -1781,6 +1911,66 @@ window.__ModuleLoader__.load({
           : null)
     }
 
+    function PullOptionsPanel(props) {
+      var state = props.state
+      var options = state.pullOptions
+      if (!options) return null
+      var repo = state.snapshot && state.snapshot.repo ? state.snapshot.repo : {}
+      var candidates = remoteBranchNames(state.snapshot)
+      var busy = state.busy
+      var empty = candidates.length === 0
+      return h('div', {
+        className: 'gm-pullopts-mask',
+        onMouseDown: function (event) { if (event.target === event.currentTarget) props.onClose() },
+      },
+        h('div', {
+          className: 'gm-pullopts',
+          role: 'dialog',
+          'aria-modal': 'true',
+          'aria-label': tr('pull.title'),
+        },
+          h('div', { className: 'gm-row gm-pullopts-head' },
+            h('span', { className: 'gm-pullopts-title' }, tr('pull.title')),
+            h('span', { className: 'gm-spacer' }),
+            h('button', {
+              type: 'button',
+              className: 'gm-btn icon sm ghost',
+              title: tr('header.cancel'),
+              onClick: props.onClose,
+            }, h(Icon, { name: 'close', size: 12 }))),
+          h('div', { className: 'gm-pullopts-hint' }, tr('pull.hint', { branch: repo.branch || '' })),
+          h('div', { className: 'gm-row' },
+            h('span', { className: 'gm-hint' }, tr('pull.target')),
+            h('select', {
+              className: 'gm-select',
+              value: options.ref,
+              title: tr('pull.target'),
+              disabled: !!busy || empty,
+              onChange: function (event) { props.onRef(event.target.value) },
+            }, empty
+              ? h('option', { value: '' }, tr('pull.noBranch'))
+              : candidates.map(function (name) {
+                return h('option', { key: name, value: name }, name)
+              }))),
+          h('label', { className: 'gm-check' },
+            h('input', {
+              type: 'checkbox',
+              checked: !!options.setUpstream,
+              disabled: !!busy,
+              onChange: function (event) { props.onSetUpstream(event.target.checked) },
+            }),
+            h('span', null, tr('pull.setUpstream'))),
+          h('div', { className: 'gm-actions' },
+            h('span', { className: 'gm-spacer' }),
+            h(Btn, { label: tr('header.cancel'), ghost: true, onClick: props.onClose }),
+            h(Btn, {
+              label: busy === 'pull' ? tr('status.pulling') : tr('pull.confirm'),
+              variant: 'primary',
+              disabled: !!busy || empty || !options.ref,
+              onClick: props.onConfirm,
+            }))))
+    }
+
     function CompactTopBar(props) {
       var state = props.state
       var repo = state.snapshot && state.snapshot.repo ? state.snapshot.repo : null
@@ -1807,6 +1997,15 @@ window.__ModuleLoader__.load({
           h('span', { className: 'gm-spacer' }),
           h(Btn, { icon: 'refresh', title: state.loading ? tr('header.refreshing') : tr('header.refresh'), disabled: !!busy, onClick: props.onRefresh }),
           h(Btn, { icon: 'plus', title: tr('header.newBranch'), disabled: !!busy, onClick: function () { props.onNewBranch(true) } })),
+        state.pullOptions
+          ? h(PullOptionsPanel, {
+            state: state,
+            onRef: props.onPullOptionRef,
+            onSetUpstream: props.onPullOptionUpstream,
+            onClose: props.onClosePullOptions,
+            onConfirm: props.onConfirmPullOptions,
+          })
+          : null,
         state.newBranchOpen
           ? h('div', { className: 'gm-row' },
             h('input', {
@@ -2294,6 +2493,10 @@ window.__ModuleLoader__.load({
           onNewBranchName: props.actions.setNewBranchName,
           onNewBranchFrom: props.actions.setNewBranchFrom,
           onCreateBranch: props.actions.createBranch,
+          onPullOptionRef: props.actions.setPullOptionRef,
+          onPullOptionUpstream: props.actions.setPullOptionUpstream,
+          onClosePullOptions: props.actions.closePullOptions,
+          onConfirmPullOptions: props.actions.confirmPullOptions,
         }),
         h('div', { className: 'gm-tabs' },
           tabs.map(function (tab) {

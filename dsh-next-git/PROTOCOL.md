@@ -228,7 +228,7 @@ dsh-next-git/
 | `deleteBranch` | `{ cwd, name, force?: boolean }` | `git branch -d\|-D <name>` | `{ output }` |
 | `commit` | `{ cwd, message, stageAll?: boolean }` | 可选 `git add -A` 后 `git commit -m <message>` | `{ hash, subject, output }` |
 | `fetch` | `{ cwd, remote?: string }` | `git fetch --all --prune`（有 remote 时 `git fetch <remote>`） | `{ output }` |
-| `pull` | `{ cwd }` | `git pull` | `{ output, branch }` |
+| `pull` | `{ cwd, remote?: string, branch?: string, setUpstream?: boolean }` | `git pull`；带 `remote`/`branch` 时 `git pull [--set-upstream] <remote> <branch>` | `{ output, branch }` |
 | `push` | `{ cwd, setUpstream?: boolean }` | 无 upstream 时 `git push -u origin <branch>`，否则 `git push` | `{ output, branch }` |
 | `aiCommit` | `{ cwd, hint?: string }` | 见 §3.5 | `{ message, subject, body, model, fallback }` |
 | `stashPush` | `{ cwd, message?: string, includeUntracked?: boolean }` | `git stash push [-u] [-m <msg>]` | `{ output }` |

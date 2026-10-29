@@ -37,6 +37,8 @@ https://github.com/user-attachments/assets/c57169b4-df00-450d-b4f0-7a2c64db03b6
   生成结果撞到 maxTokens 上限（半份文件）会直接报错，不会写回工作区。
 - **提交 / 推送 / 拉取**：Fetch、Pull、Push 按钮，提交信息输入框，
   支持「提交」「提交并推送」；无 upstream 时自动 `push -u origin <branch>`。
+  Pull 若因当前分支没有上游跟踪失败，面板会就地弹出「拉取选项」，让你从远端分支里
+  选一个并一键 `pull --set-upstream` 建立跟踪，不用再去命令行。
 - **AI 提交信息**：读取已暂存 diff + 最近提交风格，调用当前默认模型生成
   Conventional Commits 提交信息（标题 + 可选正文，正文用来说清动机与影响面），
   填入输入框供编辑；模型不可用时降级为 `chore: 更新 N 个文件`。
@@ -201,8 +203,8 @@ op 一览：`snapshot` `graph` `diff` `stage` `unstage` `switchBranch` `deleteBr
 
 ## 已知限制
 
-- Pull 使用 `git pull`（遵循仓库配置），不做冲突自动处理；冲突会在变更列表
-  的 conflicted 组里以红色显示。
+- Pull 默认使用 `git pull`（遵循仓库配置）；无上游时可在面板「拉取选项」里选择远端分支
+  并建立跟踪。不做冲突自动处理；冲突会在变更列表的 conflicted 组里以红色显示。
 - 大仓库的 graph 默认取 80 条（上限 300）；diff 超过 400k 字符会截断。
 - 会话的工作目录被删除/不可访问时，面板显示「工作目录不存在或无法访问」空态
   （Host 返回 `cwd-unavailable`），不会展示原始 spawn 错误。

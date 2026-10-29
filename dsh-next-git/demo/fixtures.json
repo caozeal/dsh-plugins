@@ -11,7 +11,7 @@
       "upstreamGone": false,
       "ahead": 0,
       "behind": 0,
-      "remoteUrl": null
+      "remoteUrl": "git@github.com:caozeal/whale-notes.git"
     },
     "branches": [
       {
@@ -49,9 +49,26 @@
         "commit": "edaa5c1",
         "subject": "merge: 合入空输入修复",
         "date": "2026-10-28 11:13:56 +0800"
+      },
+      {
+        "name": "origin/main",
+        "kind": "remote",
+        "current": false,
+        "upstream": null,
+        "ahead": 0,
+        "behind": 0,
+        "gone": false,
+        "commit": "edaa5c1",
+        "subject": "merge: 合入空输入修复",
+        "date": "2026-10-28 11:13:56 +0800"
       }
     ],
-    "remotes": [],
+    "remotes": [
+      {
+        "name": "origin",
+        "url": "git@github.com:caozeal/whale-notes.git"
+      }
+    ],
     "status": {
       "clean": false,
       "staged": [

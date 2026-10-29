@@ -219,6 +219,18 @@ function resolveOp(fixtures, body) {
       theirsExists: record.theirsExists !== false
     })
   }
+  // pull：演示「无上游 → 选远端分支 → 建立跟踪」的交互。
+  // 不传 remote/branch 时模拟真实的 no tracking 失败，触发面板的拉取选项；
+  // 传了就假装拉取成功（只读演示，不联网）。
+  if (op === 'pull') {
+    if (!body.remote && !body.branch) {
+      return fail('git-failed', 'There is no tracking information for the current branch.\nPlease specify which branch you want to rebase against.')
+    }
+    return ok({
+      branch: fixtures.snapshot.repo.branch,
+      output: '演示：已从 ' + String(body.remote || 'origin') + '/' + String(body.branch || '') + ' 拉取（只读演示，未联网）'
+    })
+  }
   // 写操作：Demo 里不真的改仓库，明确告知而不是假装成功。
   // 文案要短：这条提示渲染在面板底部那一行状态条里，太长会被截断。
   return fail('demo-readonly', '演示模式为只读快照，写操作请本地安装后体验')

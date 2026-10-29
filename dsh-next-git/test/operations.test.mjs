@@ -236,6 +236,70 @@ test('push：无 upstream 时使用 -u origin <branch>', async () => {
   assert.ok(calls.some((call) => call.args.join(' ') === 'push -u origin topic'))
 })
 
+test('pull：默认裸 git pull（沿用仓库配置）', async () => {
+  const { exec, calls } = makeExec([
+    [['rev-parse', '--show-toplevel'], ok(`${ROOT}\n`)],
+    [['rev-parse', '--abbrev-ref', 'HEAD'], ok('master\n')],
+    [['pull'], ok('Already up to date.\n')],
+  ])
+  const ops = createOperations({ exec })
+  const data = await ops.handle('pull', { cwd: CWD })
+  assert.equal(data.branch, 'master')
+  assert.ok(calls.some((call) => call.args.join(' ') === 'pull'))
+})
+
+test('pull：指定 remote/branch 且 setUpstream 时使用 --set-upstream', async () => {
+  const { exec, calls } = makeExec([
+    [['rev-parse', '--show-toplevel'], ok(`${ROOT}\n`)],
+    [['rev-parse', '--abbrev-ref', 'HEAD'], ok('master\n')],
+    [['pull', '--set-upstream', 'origin', 'master'], ok('')],
+  ])
+  const ops = createOperations({ exec })
+  const data = await ops.handle('pull', { cwd: CWD, remote: 'origin', branch: 'master', setUpstream: true })
+  assert.equal(data.branch, 'master')
+  assert.ok(calls.some((call) => call.args.join(' ') === 'pull --set-upstream origin master'))
+})
+
+test('pull：指定 remote/branch 但 setUpstream 为假时不加 --set-upstream', async () => {
+  const { exec, calls } = makeExec([
+    [['rev-parse', '--show-toplevel'], ok(`${ROOT}\n`)],
+    [['rev-parse', '--abbrev-ref', 'HEAD'], ok('master\n')],
+    [['pull', 'upstream', 'main'], ok('')],
+  ])
+  const ops = createOperations({ exec })
+  await ops.handle('pull', { cwd: CWD, remote: 'upstream', branch: 'main' })
+  assert.ok(calls.some((call) => call.args.join(' ') === 'pull upstream main'))
+})
+
+test('pull：remote 含非法字符时拒绝（invalid-params）', async () => {
+  const { exec } = makeExec([[['rev-parse', '--show-toplevel'], ok(`${ROOT}\n`)]])
+  const ops = createOperations({ exec })
+  await assert.rejects(
+    () => ops.handle('pull', { cwd: CWD, remote: 'origin; rm -rf /', branch: 'main' }),
+    (error) => error instanceof GitError && error.code === 'invalid-params',
+  )
+})
+
+test('pull：remote 以 - 开头时拒绝，防 git 选项注入', async () => {
+  const { exec } = makeExec([[['rev-parse', '--show-toplevel'], ok(`${ROOT}\n`)]])
+  const ops = createOperations({ exec })
+  await assert.rejects(
+    () => ops.handle('pull', { cwd: CWD, remote: '--upload-pack', branch: '/tmp/evil' }),
+    (error) => error instanceof GitError && error.code === 'invalid-params',
+  )
+})
+
+test('pull：只给 branch 时回退到仓库实际存在的远端（非 origin）', async () => {
+  const { exec, calls } = makeExec([
+    [['rev-parse', '--show-toplevel'], ok(`${ROOT}\n`)],
+    [['remote'], ok('upstream\n')],
+    [['pull', 'upstream', 'main'], ok('')],
+  ])
+  const ops = createOperations({ exec })
+  await ops.handle('pull', { cwd: CWD, branch: 'main' })
+  assert.ok(calls.some((call) => call.args.join(' ') === 'pull upstream main'))
+})
+
 test('aiCommit：没有 llm 时降级成确定性文案', async () => {
   const { exec } = makeExec([
     [['rev-parse', '--show-toplevel'], ok(`${ROOT}\n`)],
